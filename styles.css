@@ -74,10 +74,10 @@ select{appearance:none;-webkit-appearance:none;padding-right:44px!important;back
 }
 .onboarding-mascot{
   position:relative!important; display:block!important; visibility:visible!important; opacity:1!important;
-  width:min(100%,420px)!important; max-width:420px!important; height:auto!important; max-height:100%!important;
+  width:min(112%,470px)!important; max-width:470px!important; height:auto!important; max-height:100%!important;
   object-fit:contain!important; object-position:center bottom!important; margin:auto!important;
   border:0!important; border-radius:0!important; background:transparent!important; box-shadow:none!important;
-  image-rendering:auto; transform:none!important;
+  image-rendering:auto; transform:none!important; filter:none!important;
 }
 .onboarding-demo,.mascot-speech,.mascot-doodle{display:none!important}
 .mascot-fallback-card{
@@ -103,6 +103,6 @@ select{appearance:none;-webkit-appearance:none;padding-right:44px!important;back
   .onboarding-brand{height:42px;flex-basis:42px}.onboarding-brand span{display:none}
   .onboarding-copy h2{font-size:24px}.onboarding-copy p{font-size:12px;min-height:32px}
   .onboarding-actions button{min-height:48px}.onboarding-dots{padding:9px 0 10px 4px}
-  .onboarding-mascot{width:min(100%,360px)!important;max-width:360px!important}
+  .onboarding-mascot{width:min(108%,390px)!important;max-width:390px!important}
 }
 @media(prefers-reduced-motion:reduce){.onboarding-mascot{animation:none!important}}

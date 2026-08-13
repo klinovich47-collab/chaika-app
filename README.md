@@ -1,15 +1,10 @@
-# ЧАЙКА — Vercel fixed build
+# ЧАЙКА
 
-Эта сборка принудительно создаёт `dist/` при деплое.
+Готовая Vercel-сборка.
 
-Файлы в корне репозитория:
-- index.html
-- app.js
-- styles.css
-- onboard-intro.jpg
-- onboard-point.png
-- build.mjs
-- package.json
-- vercel.json
+Файлы персонажа:
+- `chaika-main.png` — основная чайка, 1024×1536, прозрачный фон
+- `chaika-point.png` — чайка для шага создания события, 1024×1536, прозрачный фон
 
-Vercel запустит `npm run build`, после чего опубликует папку `dist`.
+Загружай все файлы из этой папки в корень GitHub-репозитория `chaika-app`.
+Vercel выполнит `npm run build` и опубликует `dist/`.

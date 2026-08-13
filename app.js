@@ -107,8 +107,8 @@ $('resetBtn').onclick=()=>{localStorage.removeItem('tuda_events');localStorage.r
 function toast(message){els.toast.textContent=message;els.toast.classList.add('show');setTimeout(()=>els.toast.classList.remove('show'),1900)}
 
 
-const MASCOT_URL="./onboard-intro.jpg?rev=1";
-const MASCOT_POINT_URL="./onboard-point.png?rev=1";
+const MASCOT_URL="./chaika-main.png?rev=2";
+const MASCOT_POINT_URL="./chaika-point.png?rev=2";
 const onboardingSteps=[
   {kicker:'ЗНАКОМСТВО',title:'Покажу, как тут всё работает',text:'На карте — события вокруг тебя. Быстро покажу основные кнопки.',speech:'Йоу! Я Чайка',mascot:MASCOT_URL,button:'Начать'},
   {kicker:'КАРТА',title:'Смотри, что происходит рядом',text:'Тут события на карте. Нажимай на маркеры и выбирай, куда пойти.',speech:'Вот что рядом',mascot:MASCOT_URL,button:'Дальше'},
@@ -126,10 +126,10 @@ function renderOnboarding(){
   onboardingDots.innerHTML=onboardingSteps.map((_,i)=>`<button class="onboarding-dot ${i===onboardingStep?'active':''}" type="button" aria-label="Шаг ${i+1}"></button>`).join('');
   onboardingDots.querySelectorAll('button').forEach((b,i)=>b.onclick=()=>{onboardingStep=i;renderOnboarding()});
 }
-function closeOnboarding(){localStorage.setItem('chaika_onboarding_clean_1','done');onboardingEl.classList.add('hidden');onboardingEl.setAttribute('aria-hidden','true');tg?.HapticFeedback?.impactOccurred('light')}
+function closeOnboarding(){localStorage.setItem('chaika_onboarding_clean_2','done');onboardingEl.classList.add('hidden');onboardingEl.setAttribute('aria-hidden','true');tg?.HapticFeedback?.impactOccurred('light')}
 function showOnboarding(){onboardingStep=0;renderOnboarding();onboardingEl.classList.remove('hidden');onboardingEl.setAttribute('aria-hidden','false')}
 $('onboardingNext')?.addEventListener('click',()=>{if(onboardingStep<onboardingSteps.length-1){onboardingStep++;renderOnboarding();tg?.HapticFeedback?.selectionChanged()}else closeOnboarding()});
 $('onboardingSkip')?.addEventListener('click',closeOnboarding);$('onboardingSkipTop')?.addEventListener('click',closeOnboarding);
-if(!localStorage.getItem('chaika_onboarding_clean_1'))setTimeout(showOnboarding,220);
+if(!localStorage.getItem('chaika_onboarding_clean_2'))setTimeout(showOnboarding,220);
 
 renderMap();renderConcerts();updateProfile();

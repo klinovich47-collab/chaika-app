@@ -4,8 +4,8 @@ const files = [
   'index.html',
   'app.js',
   'styles.css',
-  'onboard-intro.jpg',
-  'onboard-point.png'
+  'chaika-main.png',
+  'chaika-point.png'
 ];
 
 await rm('dist', { recursive: true, force: true });
