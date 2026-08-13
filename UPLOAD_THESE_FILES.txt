@@ -1,0 +1,15 @@
+ЗАГРУЗИ ВСЕ ЭТИ ФАЙЛЫ В КОРЕНЬ GitHub-репозитория chaika-app.
+
+Обязательно должны появиться:
+chaika-main.png
+chaika-point.png
+
+При загрузке:
+- index.html -> Replace
+- app.js -> Replace
+- styles.css -> Replace
+- build.mjs -> Replace
+- chaika-main.png -> Add
+- chaika-point.png -> Add
+
+После Commit Vercel должен автоматически сделать новый deployment.
