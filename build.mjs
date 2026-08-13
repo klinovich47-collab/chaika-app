@@ -1,8 +1,7 @@
-import { mkdir, copyFile, rm } from 'node:fs/promises';
+import { mkdir, copyFile, rm, readFile, writeFile } from 'node:fs/promises';
 
 const files = [
   'index.html',
-  'app.js',
   'styles.css',
   'chaika-main.png',
   'chaika-point.png'
@@ -10,7 +9,9 @@ const files = [
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
-for (const file of files) {
-  await copyFile(file, `dist/${file}`);
-}
-console.log(`Prepared ${files.length} static files in dist/`);
+for (const file of files) await copyFile(file, `dist/${file}`);
+
+const app = await readFile('app.js', 'utf8');
+const live = await readFile('supabase-live.js', 'utf8');
+await writeFile('dist/app.js', `${app}\n\n${live}\n`);
+console.log('Prepared CHAIKA static build with Supabase integration.');
