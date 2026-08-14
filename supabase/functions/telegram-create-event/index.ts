@@ -34,22 +34,42 @@ function localModeration(raw:string){
   if(hasAny(f.compact,hardRu)||hasAny(f.latinCompact,hardLat)||anyPattern([f.spaced,f.latinSpaced],hardPatterns))return {status:'block',reason:'dangerous_or_illegal'} as const;
 
   const reviewRu=['хуй','хуя','хуе','хер','пизд','пиздец','ебан','ебат','ебля','ебуч','ебнут','уеб','заеб','наеб','поеб','выеб','бляд','шлюх','манда','елда','залуп','фаллос','фалос','пенис','писюн','письк','вагин','вареник','сперм','конч','дроч','отсос','минет','куни','порно','оргия','сиськ','титьк','жоп','анус','секс','анал','член','шмаль','гашиш','травка','косяк','спиды','скорость','кислота','таблы','колеса','кокс','эскорт','драка','подраться','мордобой','охотаналюд','кровавыйритуал','сатанинскийритуал','безправил','секретныйадрес','тольконалич','легкиеденьги','100заработ'];
-  const reviewLat=['hui','huy','khui','pizda','pizdec','pizdets','ebat','eblya','blyad','blyat','chlen','zalupa','fallos','penis','vagina','dick','cock','pussy','blowjob','porn','porno','fuck','sex','anal','escort','hashish','gashish','weed'];
+  const reviewLat=['hui','huy','khui','pizda','pizdec','pizdets','ebat','eblya','blyad','blyat','chlen','zalupa','falloc','fallos','penis','vagina','dick','cock','pussy','blowjob','porn','porno','fuck','sex','anal','escort','hashish','gashish','weed'];
   const reviewPatterns=[/(по\s+приколу|рофл|прикол\S*\s+событ)/u,/(кур\S*|забить|пыхн\S*)\s+.*(шмаль|трав|косяк|гаш)/u,/(поюз\S*|юз\S*)\s+.*(веществ|табл|колес|скорост)/u,/\b(fuck|blowjob|pussy|cock|dick|porn)\w*/i];
   if(hasAny(f.compact,reviewRu)||hasAny(f.latinCompact,reviewLat)||anyPattern([f.spaced,f.latinSpaced],reviewPatterns))return {status:'review',reason:'slang_or_ambiguous'} as const;
   return {status:'published',reason:'local_rules_clean'} as const;
 }
 
+async function resolveOpenAIKey(){
+  const envKey=Deno.env.get('OPENAI_API_KEY');
+  if(envKey)return envKey;
+  try{
+    const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+    const {data,error}=await db.rpc('chaika_openai_api_key');
+    if(!error&&data)return String(data);
+  }catch(error){console.error('OpenAI Vault lookup failed',error);}
+  return '';
+}
+
 async function aiModeration(text:string,image:string){
-  const apiKey=Deno.env.get('OPENAI_API_KEY');if(!apiKey)return {available:false,flagged:false,severe:false,reason:'openai_key_missing'};
+  const apiKey=await resolveOpenAIKey();if(!apiKey)return {available:false,flagged:false,severe:false,reason:'openai_key_missing'};
   try{
     const input:any[]=[{type:'text',text}];if(image)input.push({type:'image_url',image_url:{url:image}});
-    const r=await fetch('https://api.openai.com/v1/moderations',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:'omni-moderation-latest',input})});
-    if(!r.ok){const body=await r.text();console.error('OpenAI moderation HTTP',r.status,body.slice(0,500));return {available:true,flagged:false,severe:false,error:true,reason:`openai_http_${r.status}`};}
-    const j=await r.json(),res=j?.results?.[0]||{},c=res.categories||{},scores=res.category_scores||{};
-    const severe=Boolean(c['sexual/minors']||c['hate/threatening']||c['violence/graphic']||c['self-harm/instructions']||c['self-harm/intent']||c['illicit/violent']);
-    const flaggedCategories=Object.entries(c).filter(([,v])=>Boolean(v)).map(([k])=>k);
-    return {available:true,flagged:Boolean(res.flagged),severe,reason:flaggedCategories.length?`ai:${flaggedCategories.join(',')}`:'ai_clean',model:j?.model||'omni-moderation-latest',categories:c,scores};
+    let lastStatus=0;
+    for(let attempt=0;attempt<2;attempt++){
+      const r=await fetch('https://api.openai.com/v1/moderations',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:'omni-moderation-latest',input})});
+      lastStatus=r.status;
+      if(r.ok){
+        const j=await r.json(),res=j?.results?.[0]||{},c=res.categories||{},scores=res.category_scores||{};
+        const severe=Boolean(c['sexual/minors']||c['hate/threatening']||c['violence/graphic']||c['self-harm/instructions']||c['self-harm/intent']||c['illicit/violent']);
+        const flaggedCategories=Object.entries(c).filter(([,v])=>Boolean(v)).map(([k])=>k);
+        return {available:true,flagged:Boolean(res.flagged),severe,reason:flaggedCategories.length?`ai:${flaggedCategories.join(',')}`:'ai_clean',model:j?.model||'omni-moderation-latest',categories:c,scores};
+      }
+      const body=await r.text();console.error('OpenAI moderation HTTP',r.status,body.slice(0,500));
+      if(r.status!==429)break;
+      if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700));
+    }
+    return {available:true,flagged:false,severe:false,error:true,reason:`openai_http_${lastStatus||'error'}`};
   }catch(error){console.error('OpenAI moderation failed',error);return {available:true,flagged:false,severe:false,error:true,reason:'openai_request_failed'};}
 }
 
