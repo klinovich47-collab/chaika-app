@@ -53,18 +53,21 @@ moderate=function(text){
 };
 
 const CHAIKA_PUBLIC_EVENT_URL='https://chaika-app.vercel.app/';
+const CHAIKA_BOT_USERNAME='chaika47bot';
+function chaikaEventDeepLink(id){return `https://t.me/${CHAIKA_BOT_USERNAME}?startapp=${encodeURIComponent(`event_${id}`)}`}
 shareEvent=async function(id){
   const event=state.events.find(x=>x.id===id);
   if(!event)return toast('Событие не найдено');
-  const url=new URL(CHAIKA_PUBLIC_EVENT_URL);
-  url.searchParams.set('event',id);
-  const direct=url.toString();
+  const webUrl=new URL(CHAIKA_PUBLIC_EVENT_URL);
+  webUrl.searchParams.set('event',id);
+  const direct=webUrl.toString();
+  const miniApp=chaikaEventDeepLink(id);
   const text=`Смотри событие в ЧАЙКЕ: ${event.title}`;
-  const telegramShare=`https://t.me/share/url?url=${encodeURIComponent(direct)}&text=${encodeURIComponent(text)}`;
+  const telegramShare=`https://t.me/share/url?url=${encodeURIComponent(miniApp)}&text=${encodeURIComponent(text)}`;
   try{
     if(tg?.openTelegramLink){tg.openTelegramLink(telegramShare);return;}
-    if(navigator.share){await navigator.share({title:event.title,text,url:direct});return;}
-    await navigator.clipboard?.writeText?.(direct);
+    if(navigator.share){await navigator.share({title:event.title,text,url:miniApp});return;}
+    await navigator.clipboard?.writeText?.(miniApp);
     toast('Ссылка на событие скопирована');
   }catch(error){
     console.error('CHAIKA share',error);
@@ -73,7 +76,10 @@ shareEvent=async function(id){
 };
 
 (function chaikaOpenDeepLinkedEvent(){
-  const id=new URLSearchParams(location.search).get('event');
+  const queryId=new URLSearchParams(location.search).get('event');
+  const rawStart=window.Telegram?.WebApp?.initDataUnsafe?.start_param||startParam||'';
+  const startId=String(rawStart).match(/^event_([0-9a-f-]{36})(?:_|$)/i)?.[1]||'';
+  const id=queryId||startId;
   if(!id)return;
   let attempts=0;
   const timer=setInterval(()=>{
