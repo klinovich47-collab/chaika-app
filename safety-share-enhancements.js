@@ -103,6 +103,36 @@ shareEvent=async function(id){
   },250);
 })();
 
+/* Discovery-first boot: the external catalog spans a month, so do not hide almost all of it behind "Сегодня". */
+(function chaikaDiscoveryBoot(){
+  const queryId=new URLSearchParams(location.search).get('event');
+  const rawStart=window.Telegram?.WebApp?.initDataUnsafe?.start_param||startParam||'';
+  const deepLinked=Boolean(queryId||String(rawStart).startsWith('event_'));
+  if(deepLinked)return;
+
+  state.time='week';
+  document.querySelectorAll('[data-time]').forEach(btn=>btn.classList.toggle('active',btn.dataset.time==='week'));
+  renderMap();
+
+  let attempts=0;
+  const timer=setInterval(()=>{
+    attempts++;
+    const hasRemote=state.events.some(e=>/^[0-9a-f-]{36}$/i.test(String(e.id||'')));
+    if(hasRemote){
+      clearInterval(timer);
+      renderMap();
+      const list=filteredEvents().filter(e=>Number.isFinite(Number(e.lat))&&Number.isFinite(Number(e.lng)));
+      if(list.length===1)map.setView([list[0].lat,list[0].lng],13);
+      else if(list.length>1){
+        const bounds=L.latLngBounds(list.map(e=>[e.lat,e.lng]));
+        map.fitBounds(bounds,{padding:[28,28],maxZoom:13,animate:false});
+      }
+      return;
+    }
+    if(attempts>=40)clearInterval(timer);
+  },250);
+})();
+
 const chaikaFormNote=document.querySelector('#eventForm .form-note');
 if(chaikaFormNote)chaikaFormNote.textContent='Название, описание и место проходят автоматическую проверку. Сленг, обфускация и двусмысленные формулировки уходят на ручную модерацию; фото также проверяется перед публикацией.';
 const chaikaConcertNote=document.querySelector('#concertsView .legal-note');
