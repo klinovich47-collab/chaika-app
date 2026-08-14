@@ -89,3 +89,8 @@ shareEvent=async function(id){
     if(attempts>=40){clearInterval(timer);toast('Событие уже недоступно или ещё не опубликовано');}
   },250);
 })();
+
+const chaikaFormNote=document.querySelector('#eventForm .form-note');
+if(chaikaFormNote)chaikaFormNote.textContent='Название, описание и место проходят автоматическую проверку. Сленг и двусмысленные формулировки уходят на ручную модерацию; фото также проверяется перед публикацией.';
+const chaikaConcertNote=document.querySelector('#concertsView .legal-note');
+if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автоматически обновляются из внешних источников. Кнопка покупки открывает страницу источника или регистрации.';
