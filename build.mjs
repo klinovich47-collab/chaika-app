@@ -23,8 +23,9 @@ const darkShellRev11 = await readFile('dark-shell-rev11.js', 'utf8');
 const interactionStabilityRev13 = await readFile('interaction-stability-rev13.js', 'utf8');
 const profileActivityRev14 = await readFile('profile-activity-rev14.js', 'utf8');
 const safeAreaRev16 = await readFile('safe-area-rev16.js', 'utf8');
+const headerLayoutRev17 = await readFile('header-layout-rev17.js', 'utf8');
 
 // Cache-bust the production bundle so Telegram WebView cannot keep an older app.js.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=16'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n`);
-console.log('Prepared CHAIKA production build with Telegram/iPhone safe-area alignment (rev=16).');
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=17'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n`);
+console.log('Prepared CHAIKA production build with Telegram content-safe header layout (rev=17).');
