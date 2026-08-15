@@ -24,6 +24,6 @@ const interactionStabilityRev13 = await readFile('interaction-stability-rev13.js
 const profileActivityRev14 = await readFile('profile-activity-rev14.js', 'utf8');
 
 // Cache-bust the production bundle so Telegram WebView cannot keep an older app.js.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=14'));
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=15'));
 await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n`);
-console.log('Prepared CHAIKA production build with interactive profile, avatar upload, activity lists and referrals (rev=14).');
+console.log('Prepared CHAIKA production build with auto-cropped compressed avatars (rev=15).');
