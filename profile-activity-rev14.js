@@ -1,4 +1,4 @@
-/* CHAIKA profile activity, avatar upload and referrals (rev14). */
+/* CHAIKA profile activity, avatar upload and referrals (rev15). */
 (() => {
   const tgApp = window.Telegram?.WebApp;
   const profileState = { loaded:false, loading:false, data:null, active:'going' };
@@ -19,7 +19,7 @@
     avatar.parentNode.insertBefore(wrap, avatar);
     wrap.appendChild(avatar);
     const input = document.createElement('input');
-    input.id = 'chaikaAvatarInput'; input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.hidden = true;
+    input.id = 'chaikaAvatarInput'; input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
     const edit = document.createElement('button');
     edit.type = 'button'; edit.className = 'chaika-avatar-edit'; edit.textContent = '+'; edit.setAttribute('aria-label','Изменить фотографию');
     wrap.append(input, edit);
@@ -90,11 +90,29 @@
 
   function openSection(name){profileState.active=name||'going';if(!profileState.loaded)loadProfile();else renderSection();}
 
-  async function resizeImage(file){return await new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=1024,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',.86));};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image_read_failed'))};img.src=url;});}
+  function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(new Error('file_read_failed'));r.readAsDataURL(file);});}
+  async function compressImage(file){return await new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=1400,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));const ctx=c.getContext('2d');if(!ctx)throw new Error('canvas_unavailable');ctx.drawImage(img,0,0,c.width,c.height);const out=c.toDataURL('image/jpeg',.82);URL.revokeObjectURL(url);resolve(out);}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image_decode_failed'))};img.src=url;});}
 
   async function uploadAvatar(file){
-    if(!/^image\/(jpeg|png|webp)$/.test(file.type)){toast('Выбери JPG, PNG или WebP');return;}
-    try{toast('Загружаю фото…');const dataUrl=await resizeImage(file);const data=await profileEdge('avatar',{dataUrl});if(profileState.data?.profile)profileState.data.profile.avatar_url=data.avatar_url;renderAvatar({avatar_url:data.avatar_url});toast('Фото профиля обновлено');}catch(e){console.error(e);toast('Не удалось загрузить фото');}
+    const type=String(file.type||'').toLowerCase();
+    if(!type.startsWith('image/')){toast('Выбери фотографию');return;}
+    try{
+      toast('Загружаю фото…');
+      let dataUrl='';
+      const serverSupported=/^image\/(jpeg|png|webp)$/.test(type);
+      if(serverSupported && file.size<=6*1024*1024) dataUrl=await fileToDataUrl(file);
+      else dataUrl=await compressImage(file);
+      const data=await profileEdge('avatar',{dataUrl});
+      if(profileState.data?.profile)profileState.data.profile.avatar_url=data.avatar_url;
+      renderAvatar({avatar_url:data.avatar_url});
+      toast('Фото профиля обновлено');
+    }catch(e){
+      console.error('CHAIKA avatar upload',e);
+      const code=String(e?.message||e||'');
+      if(code.includes('image_too_large')) toast('Фото слишком большое');
+      else if(code.includes('image_decode_failed')) toast('Не удалось прочитать формат фото. Попробуй JPG');
+      else toast('Не удалось загрузить фото. Попробуй ещё раз');
+    }
   }
 
   function shareReferral(){const uid=tgApp?.initDataUnsafe?.user?.id;if(!uid)return;const link=`https://t.me/chaika47bot?startapp=ref_${uid}`;const text='Залетай в ЧАЙКУ — события рядом на карте';const share=`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;tgApp?.openTelegramLink?.(share);}
