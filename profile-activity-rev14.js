@@ -90,18 +90,14 @@
 
   function openSection(name){profileState.active=name||'going';if(!profileState.loaded)loadProfile();else renderSection();}
 
-  function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(new Error('file_read_failed'));r.readAsDataURL(file);});}
-  async function compressImage(file){return await new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=1400,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));const ctx=c.getContext('2d');if(!ctx)throw new Error('canvas_unavailable');ctx.drawImage(img,0,0,c.width,c.height);const out=c.toDataURL('image/jpeg',.82);URL.revokeObjectURL(url);resolve(out);}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image_decode_failed'))};img.src=url;});}
+  async function avatarDataUrl(file){return await new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const side=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height);const sx=Math.max(0,((img.naturalWidth||img.width)-side)/2);const sy=Math.max(0,((img.naturalHeight||img.height)-side)/2);const size=512;const c=document.createElement('canvas');c.width=size;c.height=size;const ctx=c.getContext('2d');if(!ctx)throw new Error('canvas_unavailable');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,sx,sy,side,side,0,0,size,size);const out=c.toDataURL('image/jpeg',.78);URL.revokeObjectURL(url);resolve(out);}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image_decode_failed'))};img.src=url;});}
 
   async function uploadAvatar(file){
     const type=String(file.type||'').toLowerCase();
     if(!type.startsWith('image/')){toast('Выбери фотографию');return;}
     try{
-      toast('Загружаю фото…');
-      let dataUrl='';
-      const serverSupported=/^image\/(jpeg|png|webp)$/.test(type);
-      if(serverSupported && file.size<=6*1024*1024) dataUrl=await fileToDataUrl(file);
-      else dataUrl=await compressImage(file);
+      toast('Подготавливаю аватар…');
+      const dataUrl=await avatarDataUrl(file);
       const data=await profileEdge('avatar',{dataUrl});
       if(profileState.data?.profile)profileState.data.profile.avatar_url=data.avatar_url;
       renderAvatar({avatar_url:data.avatar_url});
@@ -109,8 +105,7 @@
     }catch(e){
       console.error('CHAIKA avatar upload',e);
       const code=String(e?.message||e||'');
-      if(code.includes('image_too_large')) toast('Фото слишком большое');
-      else if(code.includes('image_decode_failed')) toast('Не удалось прочитать формат фото. Попробуй JPG');
+      if(code.includes('image_decode_failed')) toast('Не удалось прочитать фото. Попробуй другое изображение');
       else toast('Не удалось загрузить фото. Попробуй ещё раз');
     }
   }
