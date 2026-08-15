@@ -26,8 +26,9 @@ const safeAreaRev16 = await readFile('safe-area-rev16.js', 'utf8');
 const headerLayoutRev17 = await readFile('header-layout-rev17.js', 'utf8');
 const supportFeedbackRev18 = await readFile('support-feedback-rev18.js', 'utf8');
 const sheetGeolocationRev19 = await readFile('sheet-geolocation-rev19.js', 'utf8');
+const sheetLayoutRev20 = await readFile('sheet-layout-rev20.js', 'utf8');
 
 // Cache-bust the production bundle so Telegram WebView cannot keep an older app.js.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=19'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n`);
-console.log('Prepared CHAIKA production build with draggable sheets and geolocated startup (rev=19).');
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=20'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n`);
+console.log('Prepared CHAIKA production build with bounded draggable event sheets (rev=20).');
