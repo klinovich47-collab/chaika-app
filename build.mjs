@@ -32,6 +32,6 @@ const mapSourceToggleRev24 = await readFile('map-source-toggle-rev24.js', 'utf8'
 const eventVisualsRev25 = await readFile('event-visuals-rev25.js', 'utf8');
 
 // Cache-bust the production bundle so Telegram WebView cannot keep an older app.js.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=30'));
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=31'));
 await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${mapSourceToggleRev24}\n\n${eventVisualsRev25}\n`);
-console.log('Prepared CHAIKA production build with simplified people events and concert photos (rev=30).');
+console.log('Prepared CHAIKA production build with unobstructed map confirmation (rev=31).');

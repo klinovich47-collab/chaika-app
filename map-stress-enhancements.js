@@ -12,8 +12,9 @@
       .chaika-group-marker:hover{transform:scale(1.05)}
       .chaika-group-marker.premium,.premium-marker{animation:chaikaPremiumGlow 1.75s ease-in-out infinite!important}
       @keyframes chaikaPremiumGlow{0%,100%{transform:scale(1);box-shadow:0 0 0 2px rgba(216,255,67,.18),0 0 18px rgba(216,255,67,.34),0 8px 24px rgba(0,0,0,.48)}50%{transform:scale(1.07);box-shadow:0 0 0 5px rgba(216,255,67,.10),0 0 30px rgba(216,255,67,.62),0 10px 30px rgba(0,0,0,.58)}}
-      .chaika-location-confirm{position:absolute;z-index:1200;left:12px;right:12px;bottom:14px;display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #3a3a42;border-radius:17px;background:rgba(17,17,21,.96);box-shadow:0 18px 45px #0009;backdrop-filter:blur(18px)}
-      .chaika-location-confirm strong{font-size:13px;line-height:1.2;flex:1}.chaika-location-confirm button{border:0;border-radius:11px;padding:9px 12px;font-size:12px;font-weight:800}.chaika-location-confirm .yes{background:#d8ff43;color:#111207}.chaika-location-confirm .no{background:#2a2a31;color:#fff}
+      .chaika-location-confirm{position:absolute;z-index:1600;left:12px;right:12px;bottom:20px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:11px 12px;border:1px solid #3a3a42;border-radius:17px;background:rgba(17,17,21,.96);box-shadow:0 18px 45px #0009;backdrop-filter:blur(18px)}
+      .chaika-location-confirm strong{min-width:0;font-size:13px;line-height:1.2}.chaika-location-confirm button{border:0;border-radius:11px;min-width:54px;padding:9px 12px;font-size:12px;font-weight:800}.chaika-location-confirm .yes{background:#d8ff43;color:#111207}.chaika-location-confirm .no{background:#2a2a31;color:#fff}
+      .chaika-location-confirm-open .chaika-support-fab{opacity:0!important;visibility:hidden!important;pointer-events:none!important;transform:scale(.86)!important}
       .chaika-stress-badge{position:absolute;z-index:1100;top:10px;left:10px;max-width:calc(100% - 70px);padding:8px 10px;border-radius:12px;background:rgba(11,11,13,.9);border:1px solid #45452e;color:#d8ff43;font:800 10px/1.25 system-ui;letter-spacing:.03em;pointer-events:none;box-shadow:0 8px 24px #0007}
     `;
     document.head.appendChild(style);
@@ -167,6 +168,7 @@
       previewMarker = null;
       pendingLatLng = null;
       document.getElementById('chaikaLocationConfirm')?.remove();
+      document.documentElement.classList.remove('chaika-location-confirm-open');
     };
 
     const ask = latlng => {
@@ -185,6 +187,7 @@
       box.className = 'chaika-location-confirm';
       box.innerHTML = `<strong>${chaikaPickingLocation?'Поставить точку здесь?':'Создать событие?'}</strong><button class="no" type="button">Нет</button><button class="yes" type="button">Да</button>`;
       document.getElementById('mapView').appendChild(box);
+      document.documentElement.classList.add('chaika-location-confirm-open');
       box.querySelector('.no').onclick = clearPreview;
       box.querySelector('.yes').onclick = () => {
         const point = pendingLatLng;
