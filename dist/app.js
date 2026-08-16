@@ -3,8 +3,12 @@ if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0b0b0d'); tg.setBackgroun
 
 const DAY = 86400000;
 const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
 const bootNow = new Date();
 const dateISO = (offset = 0) => new Date(bootNow.getTime() + offset * DAY).toISOString().slice(0,10);
+function chaikaMoscowClockParts(value=new Date()){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(value);const out=Object.fromEntries(parts.map(part=>[part.type,part.value]));return {date:`${out.year}-${out.month}-${out.day}`,time:`${out.hour}:${out.minute}`}}
+function chaikaDefaultPeopleTime(){return chaikaMoscowClockParts(new Date(Date.now()+5*MINUTE)).time}
+function chaikaPeopleStartDate(time){const clock=String(time||'').match(/^([01]\d|2[0-3]):([0-5]\d)$/);if(!clock)return null;const today=chaikaMoscowClockParts().date;let start=new Date(`${today}T${clock[1]}:${clock[2]}:00+03:00`);if(start.getTime()<Date.now()-5*MINUTE)start=new Date(start.getTime()+DAY);return start}
 const iconCategories = [
   ['guitar','Гитара','i-guitar'],['music','Музыка','i-music'],['mic','Микрофон','i-mic'],['drink','Посиделки','i-drink'],['chess','Шахматы','i-chess'],
   ['chat','Поговорить','i-chat'],['coffee','Кофе','i-coffee'],['game','Игры','i-game'],['art','Творчество','i-art'],['walk','Прогулка','i-walk'],
@@ -33,7 +37,7 @@ const concerts = [
 const state = {
   events: JSON.parse(localStorage.getItem('tuda_events') || 'null') || seedEvents,
   going: new Set(JSON.parse(localStorage.getItem('tuda_going') || '[]')),
-  time:'today', categories:new Set(), price:null, distance:0, query:'', selectedId:null, markers:[], userLocation:null, nearbyMode:false, eventType:'planned', concertGenre:'all', refCount:Number(localStorage.getItem('tuda_refCount')||0)
+  time:'today', categories:new Set(), price:null, distance:0, query:'', selectedId:null, markers:[], userLocation:null, nearbyMode:false, eventType:'instant', concertGenre:'all', refCount:Number(localStorage.getItem('tuda_refCount')||0)
 };
 const user = tg?.initDataUnsafe?.user || {first_name:'Илья',username:'telegram_user'};
 const startParam = tg?.initDataUnsafe?.start_param || new URLSearchParams(location.search).get('tgWebAppStartParam');
@@ -45,26 +49,30 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,att
 L.control.zoom({position:'topright'}).addTo(map);
 
 const $ = id => document.getElementById(id);
-const els = {sheet:$('eventSheet'),feed:$('feedList'),eventCount:$('eventCount'),empty:$('mapEmpty'),form:$('eventForm'),toast:$('toast'),search:$('searchInput'),filterModal:$('filterModal'),moderationModal:$('moderationModal'),detail:$('eventDetailView'),detailBody:$('eventDetailBody'),detailHero:$('eventDetailHero'),detailHeroIcon:$('eventDetailHeroIcon'),photoInput:$('eventPhotoInput'),photoPreview:$('photoPreview'),removePhotoBtn:$('removePhotoBtn'),nearbyBtn:$('nearbyFeedBtn')};
-let pendingPhotoData='';
+const els = {sheet:$('eventSheet'),feed:$('feedList'),eventCount:$('eventCount'),empty:$('mapEmpty'),form:$('eventForm'),toast:$('toast'),search:$('searchInput'),filterModal:$('filterModal'),moderationModal:$('moderationModal'),detail:$('eventDetailView'),detailBody:$('eventDetailBody'),detailHero:$('eventDetailHero'),detailHeroIcon:$('eventDetailHeroIcon'),nearbyBtn:$('nearbyFeedBtn')};
 function svgIcon(id, cls=''){ return `<svg class="${cls}" viewBox="0 0 24 24"><use href="#${id}"/></svg>`; }
 function persist(){ localStorage.setItem('tuda_events',JSON.stringify(state.events)); localStorage.setItem('tuda_going',JSON.stringify([...state.going])); }
 function escapeHtml(v=''){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 function parseEventDate(e){return new Date(`${e.date}T${e.time||'00:00'}:00`)}
+function eventStartsAt(e){const explicit=Number(e.startsAt);return Number.isFinite(explicit)&&explicit>0?explicit:parseEventDate(e).getTime()}
 function eventExpiresAt(e){const explicit=Number(e.expiresAt);return Number.isFinite(explicit)&&explicit>0?explicit:parseEventDate(e).getTime()+HOUR}
 function isEventCurrent(e,now=Date.now()){const expiresAt=eventExpiresAt(e);return Number.isFinite(expiresAt)&&expiresAt>now}
-function formatDate(e){if(e.type==='instant')return 'Сейчас';const d=e.date===dateISO(0)?'Сегодня':e.date===dateISO(1)?'Завтра':new Date(e.date+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'});return `${d}, ${e.time}`}
+function formatDate(e){if(e.type==='instant'&&eventStartsAt(e)<=Date.now())return 'Сейчас';const today=chaikaMoscowClockParts().date,tomorrow=new Date(`${today}T12:00:00+03:00`);tomorrow.setUTCDate(tomorrow.getUTCDate()+1);const tomorrowDate=chaikaMoscowClockParts(tomorrow).date;const d=e.date===today?'Сегодня':e.date===tomorrowDate?'Завтра':new Date(`${e.date}T12:00:00+03:00`).toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'Europe/Moscow'});return `${d}, ${e.time}`}
+function isPeopleEvent(e){return !(typeof e?.source==='string'&&e.source.trim())}
+function eventListMeta(e){return isPeopleEvent(e)?formatDate(e):`${formatDate(e)} · ${e.price?e.price+' ₽':'Бесплатно'} · ${escapeHtml(e.venue)}`}
+function eventDetailMeta(e){const items=[formatDate(e)];if(!isPeopleEvent(e)){items.push(e.price?`${e.price} ₽`:'Бесплатно',escapeHtml(e.venue),`${e.ageLimit}+`)}return items.map(item=>`<span>${item}</span>`).join('')}
+function openEventLink(url){const value=String(url||'');if(!/^https?:\/\//i.test(value))return;if(/^https:\/\/t\.me\//i.test(value)&&tg?.openTelegramLink)tg.openTelegramLink(value);else if(tg?.openLink)tg.openLink(value);else window.open(value,'_blank','noopener,noreferrer')}
 function kmBetween(a,b){const R=6371,rad=x=>x*Math.PI/180,dLat=rad(b[0]-a[0]),dLon=rad(b[1]-a[1]),la1=rad(a[0]),la2=rad(b[0]);const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
-function isWithinTime(e){const n=new Date();if(!isEventCurrent(e,n.getTime()))return false;if(state.time==='now')return e.type==='instant';if(e.type==='instant'&&state.time==='today')return true;if(state.time==='today')return e.date===dateISO(0);if(state.time==='tomorrow')return e.date===dateISO(1);const days=(new Date(e.date+'T23:59')-n)/DAY;if(state.time==='week')return days>=0&&days<=7;if(state.time==='month')return days>=0&&days<=30;return true}
+function isWithinTime(e){const n=new Date();if(!isEventCurrent(e,n.getTime()))return false;if(state.time==='now')return e.type==='instant'&&eventStartsAt(e)<=n.getTime();if(state.time==='today')return e.date===chaikaMoscowClockParts(n).date;if(state.time==='tomorrow'){const next=new Date(n.getTime()+DAY);return e.date===chaikaMoscowClockParts(next).date}const days=(new Date(`${e.date}T23:59:00+03:00`)-n)/DAY;if(state.time==='week')return days>=0&&days<=7;if(state.time==='month')return days>=0&&days<=30;return true}
 function filteredEvents(){const q=state.query.trim().toLowerCase();const list=state.events.filter(e=>{if(!isWithinTime(e))return false;if(state.categories.size&&!state.categories.has(e.category))return false;if(state.price==='free'&&Number(e.price)!==0)return false;if(state.price==='paid'&&Number(e.price)===0)return false;if(q&&!`${e.title} ${e.description} ${e.venue} ${categoryMap[e.category]?.label||''}`.toLowerCase().includes(q))return false;if(state.distance&&state.userLocation&&kmBetween(state.userLocation,[e.lat,e.lng])>state.distance)return false;if(state.nearbyMode&&state.userLocation&&kmBetween(state.userLocation,[e.lat,e.lng])>3)return false;return true});if(state.nearbyMode&&state.userLocation)return list.sort((a,b)=>kmBetween(state.userLocation,[a.lat,a.lng])-kmBetween(state.userLocation,[b.lat,b.lng]));return list.sort((a,b)=>Number(b.promoted)-Number(a.promoted)||parseEventDate(a)-parseEventDate(b))}
 function markerIcon(e){const icon=categoryMap[e.category]?.icon||'i-other';const color=categoryColors[e.category]||categoryColors.other;return L.divIcon({className:'',html:`<div class="${e.promoted?'premium-marker':'regular-marker'}" style="--cat-color:${color}">${svgIcon(icon,'marker-svg')}</div>`,iconSize:e.promoted?[46,46]:[38,38],iconAnchor:e.promoted?[23,23]:[19,19]})}
 function renderMap(){state.markers.forEach(m=>map.removeLayer(m));state.markers=[];const list=filteredEvents();els.empty.classList.toggle('hidden',list.length>0);list.forEach(e=>{const m=L.marker([e.lat,e.lng],{icon:markerIcon(e),bubblingMouseEvents:false}).addTo(map);m.on('click',()=>showEvent(e.id));state.markers.push(m)});renderFeed()}
 function eventCoverClass(e){return `cover-${e.category||'other'}`}
 function closeEventSheet(){state.selectedId=null;els.sheet.classList.add('hidden')}
-function showEvent(id){const e=state.events.find(x=>x.id===id);if(!e)return;state.selectedId=id;map.panTo([e.lat,e.lng],{animate:true});const cat=categoryMap[e.category]||categoryMap.other;const photo=e.imageData?`<img class="event-sheet-cover-photo" src="${e.imageData}" alt="">`:'';els.sheet.innerHTML=`<button class="event-sheet-cover ${eventCoverClass(e)} ${e.imageData?'has-photo':''}" data-open-detail="${e.id}" type="button" aria-label="Открыть событие">${photo}<span class="event-sheet-cover-icon">${svgIcon(cat.icon)}</span><span class="event-sheet-cover-hint">Открыть событие</span></button><div class="sheet-row"><div class="event-type-icon" ${catStyle(e.category)}>${svgIcon(cat.icon)}</div><div class="event-main">${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}${e.type==='instant'?'<span class="badge live-badge">СЕЙЧАС</span>':''}<h3 class="event-title">${escapeHtml(e.title)}</h3><div class="event-meta">${formatDate(e)} · ${e.price?e.price+' ₽':'Бесплатно'}<br>${escapeHtml(e.venue)} · ${e.ageLimit}+</div></div></div><p class="event-meta">${escapeHtml(e.description||'')}</p><div class="actions"><button class="primary-btn" data-going="${e.id}">${state.going.has(e.id)?'Вы идёте':'Пойду'} · ${e.going+(state.going.has(e.id)?1:0)}</button><button class="secondary-btn" data-share="${e.id}">Поделиться</button></div>`;els.sheet.classList.remove('hidden');els.sheet.querySelector('[data-open-detail]').onclick=()=>openEventDetail(e.id);els.sheet.querySelector('[data-going]').onclick=()=>toggleGoing(e.id);els.sheet.querySelector('[data-share]').onclick=()=>shareEvent(e.id)}
-function openEventDetail(id){const e=state.events.find(x=>x.id===id);if(!e)return;const cat=categoryMap[e.category]||categoryMap.other;els.detail.dataset.eventId=id;els.detailHero.className=`event-detail-hero ${eventCoverClass(e)} ${e.imageData?'has-photo':''}`;els.detailHero.querySelectorAll('.event-detail-photo').forEach(x=>x.remove());if(e.imageData){const img=document.createElement('img');img.className='event-detail-photo';img.src=e.imageData;img.alt='';els.detailHero.prepend(img)}els.detailHeroIcon.innerHTML=svgIcon(cat.icon);els.detailBody.innerHTML=`${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}${e.type==='instant'?'<span class="badge live-badge">СЕЙЧАС</span>':''}<h2>${escapeHtml(e.title)}</h2><div class="detail-meta-row"><span>${formatDate(e)}</span><span>${e.price?e.price+' ₽':'Бесплатно'}</span><span>${escapeHtml(e.venue)}</span><span>${e.ageLimit}+</span></div><div class="detail-section"><h3>О событии</h3><p>${escapeHtml(e.description||'Описание пока не добавлено.')}</p></div><div class="detail-section"><h3>Активность</h3><p>${escapeHtml(cat.label)} · ${e.going+(state.going.has(e.id)?1:0)} ${state.going.has(e.id)?'включая вас':''}</p></div><div class="detail-actions"><button class="primary-btn" data-detail-going="${e.id}">${state.going.has(e.id)?'Вы идёте':'Пойду'}</button><button class="secondary-btn" data-detail-share="${e.id}">Поделиться</button></div>`;els.detail.classList.remove('hidden');els.detail.setAttribute('aria-hidden','false');els.detailBody.querySelector('[data-detail-going]').onclick=()=>{toggleGoing(e.id);openEventDetail(e.id)};els.detailBody.querySelector('[data-detail-share]').onclick=()=>shareEvent(e.id);tg?.BackButton?.show?.()}
+function showEvent(id){const e=state.events.find(x=>x.id===id);if(!e)return;state.selectedId=id;map.panTo([e.lat,e.lng],{animate:true});const cat=categoryMap[e.category]||categoryMap.other;const photo=e.imageData?`<img class="event-sheet-cover-photo" src="${e.imageData}" alt="">`:'';els.sheet.innerHTML=`<button class="event-sheet-cover ${eventCoverClass(e)} ${e.imageData?'has-photo':''}" data-open-detail="${e.id}" type="button" aria-label="Открыть событие">${photo}<span class="event-sheet-cover-icon">${svgIcon(cat.icon)}</span><span class="event-sheet-cover-hint">Открыть событие</span></button><div class="sheet-row"><div class="event-type-icon" ${catStyle(e.category)}>${svgIcon(cat.icon)}</div><div class="event-main">${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}${e.type==='instant'&&eventStartsAt(e)<=Date.now()?'<span class="badge live-badge">СЕЙЧАС</span>':''}<h3 class="event-title">${escapeHtml(e.title)}</h3><div class="event-meta">${eventListMeta(e)}</div></div></div><p class="event-meta">${escapeHtml(e.description||'')}</p><div class="actions"><button class="primary-btn" data-going="${e.id}">${state.going.has(e.id)?'Вы идёте':'Пойду'} · ${e.going+(state.going.has(e.id)?1:0)}</button><button class="secondary-btn" data-share="${e.id}">Поделиться</button>${e.ticketUrl?`<button class="secondary-btn event-contact-action" data-event-link="${e.id}">Связаться</button>`:''}</div>`;els.sheet.classList.remove('hidden');els.sheet.querySelector('[data-open-detail]').onclick=()=>openEventDetail(e.id);els.sheet.querySelector('[data-going]').onclick=()=>toggleGoing(e.id);els.sheet.querySelector('[data-share]').onclick=()=>shareEvent(e.id);const link=els.sheet.querySelector('[data-event-link]');if(link)link.onclick=()=>openEventLink(e.ticketUrl)}
+function openEventDetail(id){const e=state.events.find(x=>x.id===id);if(!e)return;const cat=categoryMap[e.category]||categoryMap.other;els.detail.dataset.eventId=id;els.detailHero.className=`event-detail-hero ${eventCoverClass(e)} ${e.imageData?'has-photo':''}`;els.detailHero.querySelectorAll('.event-detail-photo').forEach(x=>x.remove());if(e.imageData){const img=document.createElement('img');img.className='event-detail-photo';img.src=e.imageData;img.alt='';els.detailHero.prepend(img)}els.detailHeroIcon.innerHTML=svgIcon(cat.icon);els.detailBody.innerHTML=`${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}${e.type==='instant'&&eventStartsAt(e)<=Date.now()?'<span class="badge live-badge">СЕЙЧАС</span>':''}<h2>${escapeHtml(e.title)}</h2><div class="detail-meta-row">${eventDetailMeta(e)}</div><div class="detail-section"><h3>О событии</h3><p>${escapeHtml(e.description||'Описание пока не добавлено.')}</p></div><div class="detail-section"><h3>Активность</h3><p>${escapeHtml(cat.label)} · ${e.going+(state.going.has(e.id)?1:0)} ${state.going.has(e.id)?'включая вас':''}</p></div><div class="detail-actions"><button class="primary-btn" data-detail-going="${e.id}">${state.going.has(e.id)?'Вы идёте':'Пойду'}</button><button class="secondary-btn" data-detail-share="${e.id}">Поделиться</button>${e.ticketUrl?`<button class="secondary-btn event-contact-action" data-detail-link="${e.id}">Связаться</button>`:''}</div>`;els.detail.classList.remove('hidden');els.detail.setAttribute('aria-hidden','false');els.detailBody.querySelector('[data-detail-going]').onclick=()=>{toggleGoing(e.id);openEventDetail(e.id)};els.detailBody.querySelector('[data-detail-share]').onclick=()=>shareEvent(e.id);const link=els.detailBody.querySelector('[data-detail-link]');if(link)link.onclick=()=>openEventLink(e.ticketUrl);tg?.BackButton?.show?.()}
 function closeEventDetail(){els.detail.classList.add('hidden');els.detail.setAttribute('aria-hidden','true');tg?.BackButton?.hide?.()}
-function renderFeed(){const list=filteredEvents();els.eventCount.textContent=`${list.length}`;if(els.nearbyBtn){els.nearbyBtn.classList.toggle('active',state.nearbyMode);els.nearbyBtn.setAttribute('aria-pressed',String(state.nearbyMode));}els.feed.innerHTML=list.length?list.map(e=>{const c=categoryMap[e.category]||categoryMap.other;const dist=state.userLocation?kmBetween(state.userLocation,[e.lat,e.lng]):null;const distanceText=dist!==null?` · ${dist<1?Math.max(50,Math.round(dist*1000/50)*50)+' м':dist.toFixed(1)+' км'}`:'';return `<article class="feed-card ${e.promoted?'promoted':''}"><div class="activity-icon" ${catStyle(e.category)}>${svgIcon(c.icon)}</div><div>${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}${e.type==='instant'?'<span class="badge live-badge">СЕЙЧАС</span>':''}<h3>${escapeHtml(e.title)}</h3><p>${formatDate(e)} · ${e.price?e.price+' ₽':'Бесплатно'} · ${escapeHtml(e.venue)}${distanceText}<br>${escapeHtml(c.label)}</p><div class="mini-actions"><button data-map="${e.id}">На карте</button><button data-going="${e.id}">${state.going.has(e.id)?'Иду ✓':'Пойду'}</button></div></div></article>`}).join(''):`<div class="empty-feed">${state.nearbyMode?'Рядом пока нет подходящих событий. Попробуй другой фильтр или отключи «Рядом».':'Ничего не найдено.'}</div>`;els.feed.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>openOnMap(b.dataset.map));els.feed.querySelectorAll('[data-going]').forEach(b=>b.onclick=()=>toggleGoing(b.dataset.going))}
+function renderFeed(){const list=filteredEvents();els.eventCount.textContent=`${list.length}`;if(els.nearbyBtn){els.nearbyBtn.classList.toggle('active',state.nearbyMode);els.nearbyBtn.setAttribute('aria-pressed',String(state.nearbyMode));}els.feed.innerHTML=list.length?list.map(e=>{const c=categoryMap[e.category]||categoryMap.other;const dist=state.userLocation?kmBetween(state.userLocation,[e.lat,e.lng]):null;const distanceText=dist!==null?` · ${dist<1?Math.max(50,Math.round(dist*1000/50)*50)+' м':dist.toFixed(1)+' км'}`:'';return `<article class="feed-card ${e.promoted?'promoted':''}"><div class="activity-icon" ${catStyle(e.category)}>${svgIcon(c.icon)}</div><div>${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}${e.type==='instant'&&eventStartsAt(e)<=Date.now()?'<span class="badge live-badge">СЕЙЧАС</span>':''}<h3>${escapeHtml(e.title)}</h3><p>${eventListMeta(e)}${distanceText}<br>${escapeHtml(c.label)}</p><div class="mini-actions"><button data-map="${e.id}">На карте</button><button data-going="${e.id}">${state.going.has(e.id)?'Иду ✓':'Пойду'}</button></div></div></article>`}).join(''):`<div class="empty-feed">${state.nearbyMode?'Рядом пока нет подходящих событий. Попробуй другой фильтр или отключи «Рядом».':'Ничего не найдено.'}</div>`;els.feed.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>openOnMap(b.dataset.map));els.feed.querySelectorAll('[data-going]').forEach(b=>b.onclick=()=>toggleGoing(b.dataset.going))}
 function toggleGoing(id){state.going.has(id)?state.going.delete(id):state.going.add(id);persist();renderFeed();if(state.selectedId===id)showEvent(id);updateProfile();tg?.HapticFeedback?.impactOccurred('light')}
 function openOnMap(id){switchView('mapView');setTimeout(()=>showEvent(id),80)}
 async function shareEvent(id){const bot='eventmap_demo_bot';const ref=user.id||'guest';const url=`https://t.me/${bot}?startapp=event_${id}_ref_${ref}`;const e=state.events.find(x=>x.id===id);const share=`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Смотри событие: '+e.title)}`;if(tg?.openTelegramLink)tg.openTelegramLink(share);else if(navigator.share)await navigator.share({title:e.title,url});else toast('Ссылка: '+url)}
@@ -82,17 +90,15 @@ renderCategoryUI();
 
 $('openFiltersBtn').onclick=()=>{els.filterModal.classList.remove('hidden');els.filterModal.setAttribute('aria-hidden','false')};document.querySelectorAll('[data-close-modal]').forEach(x=>x.onclick=()=>{els.filterModal.classList.add('hidden');els.filterModal.setAttribute('aria-hidden','true')});document.querySelectorAll('[data-price]').forEach(b=>b.onclick=()=>{state.price=state.price===b.dataset.price?null:b.dataset.price;document.querySelectorAll('[data-price]').forEach(x=>x.classList.toggle('active',x.dataset.price===state.price));renderMap()});$('distanceFilter').onchange=e=>{state.distance=Number(e.target.value);if(state.distance&&!state.userLocation)requestLocation(false);renderMap()};$('resetFiltersBtn').onclick=()=>{state.categories.clear();state.price=null;state.distance=0;document.querySelectorAll('.category-filter,[data-price]').forEach(x=>x.classList.remove('active'));$('distanceFilter').value='0';renderMap()};
 
-function requestLocation(center=true,onSuccess=null){if(!navigator.geolocation){toast('Геолокация недоступна');return}navigator.geolocation.getCurrentPosition(pos=>{state.userLocation=[pos.coords.latitude,pos.coords.longitude];if(center)map.setView(state.userLocation,14);L.circleMarker(state.userLocation,{radius:6,color:'#d8ff43',fillColor:'#d8ff43',fillOpacity:1,weight:2}).addTo(map);els.form.lat.value=state.userLocation[0].toFixed(6);els.form.lng.value=state.userLocation[1].toFixed(6);onSuccess?.();renderMap();toast('Геолокация определена')},()=>toast('Разреши доступ к геолокации, чтобы показать события рядом'))}
-$('locationBtn').onclick=()=>requestLocation(true);$('useLocationBtn').onclick=()=>requestLocation(false);
+function requestLocation(center=true,onSuccess=null){if(!navigator.geolocation){toast('Геолокация недоступна');return}navigator.geolocation.getCurrentPosition(pos=>{state.userLocation=[pos.coords.latitude,pos.coords.longitude];if(center)map.setView(state.userLocation,14);L.circleMarker(state.userLocation,{radius:6,color:'#d8ff43',fillColor:'#d8ff43',fillOpacity:1,weight:2}).addTo(map);els.form.elements.namedItem('lat').value=state.userLocation[0].toFixed(6);els.form.elements.namedItem('lng').value=state.userLocation[1].toFixed(6);onSuccess?.();renderMap();toast('Геолокация определена')},()=>toast('Разреши доступ к геолокации, чтобы показать события рядом'))}
+$('locationBtn').onclick=()=>requestLocation(true);$('useLocationBtn').onclick=()=>requestLocation(false,()=>{if(typeof chaikaSetChosenPoint==='function')chaikaSetChosenPoint(state.userLocation[0],state.userLocation[1],false)});
 if(els.nearbyBtn)els.nearbyBtn.onclick=()=>{if(state.nearbyMode){state.nearbyMode=false;renderFeed();return}const enableNearby=()=>{state.nearbyMode=true;renderFeed()};if(state.userLocation)enableNearby();else requestLocation(false,enableNearby)};
 
-function setEventType(type){state.eventType=type;document.querySelectorAll('[data-event-type]').forEach(b=>b.classList.toggle('active',b.dataset.eventType===type));$('plannedFields').classList.toggle('hidden',type!=='planned');$('instantFields').classList.toggle('hidden',type!=='instant')}
-document.querySelectorAll('[data-event-type]').forEach(b=>b.onclick=()=>setEventType(b.dataset.eventType));
-els.form.date.min=dateISO(0);els.form.date.max=dateISO(30);els.form.date.value=dateISO(0);els.form.time.value='20:00';
-function resetPhotoUI(){pendingPhotoData='';if(els.photoInput)els.photoInput.value='';if(els.photoPreview)els.photoPreview.innerHTML=svgIcon('i-plus');$('photoUploadTitle').textContent='Добавить фотографию';els.removePhotoBtn?.classList.add('hidden')}
-function compressPhoto(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const img=new Image();img.onerror=reject;img.onload=()=>{const max=1280,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.78))};img.src=reader.result};reader.readAsDataURL(file)})}
-if(els.photoInput)els.photoInput.addEventListener('change',async()=>{const file=els.photoInput.files?.[0];if(!file)return resetPhotoUI();if(!file.type.startsWith('image/')){toast('Выбери изображение');return resetPhotoUI()}if(file.size>12*1024*1024){toast('Файл слишком большой');return resetPhotoUI()}try{pendingPhotoData=await compressPhoto(file);els.photoPreview.innerHTML=`<img src="${pendingPhotoData}" alt="Предпросмотр фотографии">`;$('photoUploadTitle').textContent='Фотография добавлена';els.removePhotoBtn.classList.remove('hidden')}catch{toast('Не удалось обработать фотографию');resetPhotoUI()}});
-els.removePhotoBtn?.addEventListener('click',resetPhotoUI);
+function setEventType(){state.eventType='instant'}
+els.form.elements.namedItem('time').value=chaikaDefaultPeopleTime();
+function resetPhotoUI(){}
+const telegramLinkButton=$('addTelegramLinkBtn');
+if(telegramLinkButton)telegramLinkButton.addEventListener('click',()=>{const username=window.Telegram?.WebApp?.initDataUnsafe?.user?.username||user.username;if(!username||username==='telegram_user')return toast('Сначала задай username в Telegram');els.form.elements.namedItem('ticketUrl').value=`https://t.me/${String(username).replace(/^@/,'')}`;toast(`Добавлен @${String(username).replace(/^@/,'')}`)});
 
 const baseModerationLatinToCyr={a:'а',b:'в',c:'с',d:'д',e:'е',f:'ф',g:'г',h:'х',i:'и',j:'й',k:'к',l:'л',m:'м',n:'н',o:'о',p:'р',q:'к',r:'р',s:'с',t:'т',u:'у',v:'в',w:'ш',x:'х',y:'у',z:'з'};
 const baseModerationSymbols={'@':'а','₽':'р','0':'о','1':'и','3':'з','4':'ч','6':'б','8':'в','$':'с','€':'е'};
@@ -105,9 +111,9 @@ const suspiciousPatterns=[/без\s+правил/i,/секретн\w*\s+адре
 function moderate(text){const normalized=baseModerationText(text);if(hardBlockTerms.some(term=>normalized.compact.includes(term))||hardBlockPatterns.some(r=>r.test(normalized.spaced)))return {status:'block',title:'Публикация отклонена',text:'Обнаружены признаки запрещённого или опасного содержания. Такое событие нельзя публиковать.'};if(profanityPatterns.some(r=>r.test(normalized.spaced)))return {status:'review',title:'Нужно исправить текст',text:'В названии или описании обнаружена грубая лексика. Переформулируй текст — так карточка будет понятнее и аккуратнее.'};if(suspiciousPatterns.some(r=>r.test(normalized.spaced)))return {status:'review',title:'Нужна ручная проверка',text:'Система обнаружила формулировки, которые требуют проверки модератором.'};return {status:'ok',title:'Проверка пройдена',text:'Событие прошло автоматическую проверку.'}}
 function showModeration(result,onOk){$('moderationIcon').className=`moderation-icon ${result.status}`;$('moderationIcon').textContent=result.status==='ok'?'✓':result.status==='review'?'!':'×';$('moderationTitle').textContent=result.title;$('moderationText').textContent=result.text;els.moderationModal.classList.remove('hidden');$('moderationOkBtn').onclick=()=>{els.moderationModal.classList.add('hidden');onOk?.()}}
 
-els.form.addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(els.form).entries());if(state.eventType==='planned'){const chosen=new Date(`${data.date}T12:00`);const max=new Date(`${dateISO(30)}T23:59`);if(chosen<new Date(`${dateISO(0)}T00:00`)||chosen>max)return showModeration({status:'block',title:'Дата вне диапазона',text:'Пользовательские события можно создавать только на ближайшие 30 дней.'})}const mod=moderate(`${data.title} ${data.description||''} ${data.venue||''}`);if(mod.status!=='ok')return showModeration(mod);const event={id:`evt_${Date.now()}`,title:data.title.trim(),category:data.category,date:state.eventType==='instant'?dateISO(0):data.date,time:state.eventType==='instant'?new Date().toTimeString().slice(0,5):data.time,price:Number(data.price||0),venue:data.venue.trim(),lat:Number(data.lat),lng:Number(data.lng),ageLimit:Number(data.ageLimit||0),promoted:data.promoted==='on',description:(data.description||'').trim(),ticketUrl:data.ticketUrl||'',imageData:pendingPhotoData,going:0,owner:true,type:state.eventType,expiresAt:state.eventType==='instant'?Date.now()+Number(data.duration||60)*60*1000:null};state.events.unshift(event);persist();showModeration(mod,()=>{els.form.reset();resetPhotoUI();els.form.date.min=dateISO(0);els.form.date.max=dateISO(30);els.form.date.value=dateISO(0);els.form.time.value='20:00';$('categoryInput').value='guitar';document.querySelectorAll('.icon-choice').forEach((x,i)=>x.classList.toggle('active',i===0));setEventType('planned');renderMap();updateProfile();switchView('mapView');setTimeout(()=>{map.setView([event.lat,event.lng],14);showEvent(event.id)},100);tg?.HapticFeedback?.notificationOccurred('success')})});
+els.form.addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(els.form).entries()),latRaw=String(data.lat||'').trim(),lngRaw=String(data.lng||'').trim(),lat=Number(latRaw),lng=Number(lngRaw);if(!latRaw||!lngRaw||!Number.isFinite(lat)||!Number.isFinite(lng))return showModeration({status:'block',title:'Не выбрана точка',text:'Поставь точку на карте или используй свою геопозицию.'});const startsAt=chaikaPeopleStartDate(data.time),duration=Number(data.duration);if(!startsAt||!Number.isFinite(duration)||duration<15||duration>1440)return showModeration({status:'block',title:'Проверь время',text:'Укажи время начала и длительность не больше 24 часов.'});const mod=moderate(`${data.title} ${data.description||''}`);if(mod.status!=='ok')return showModeration(mod);const parts=chaikaMoscowClockParts(startsAt),event={id:`evt_${Date.now()}`,title:data.title.trim(),category:data.category,date:parts.date,time:parts.time,price:0,venue:'Точка на карте',lat,lng,ageLimit:0,promoted:false,description:(data.description||'').trim(),ticketUrl:data.ticketUrl||'',imageData:'',going:0,owner:true,type:'instant',startsAt:startsAt.getTime(),expiresAt:startsAt.getTime()+duration*MINUTE};state.events.unshift(event);persist();showModeration(mod,()=>{els.form.reset();resetPhotoUI();els.form.elements.namedItem('time').value=chaikaDefaultPeopleTime();$('categoryInput').value='guitar';document.querySelectorAll('.icon-choice').forEach((x,i)=>x.classList.toggle('active',i===0));setEventType();renderMap();updateProfile();switchView('mapView');setTimeout(()=>{map.setView([event.lat,event.lng],14);showEvent(event.id)},100);tg?.HapticFeedback?.notificationOccurred('success')})});
 
-function renderConcerts(){const list=concerts.filter(c=>state.concertGenre==='all'||c.genre===state.concertGenre);$('concertList').innerHTML=list.map(c=>`<article class="concert-card"><div class="concert-visual"><span class="badge">${c.genre.toUpperCase()}</span><strong>${escapeHtml(c.artist)}</strong></div><div class="concert-body"><div class="concert-meta">${c.date.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}<br>${escapeHtml(c.venue)}</div><div class="concert-bottom"><b>${c.price}</b><button data-buy="${c.id}">Купить билет ↗</button></div></div></article>`).join('');$('concertList').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const c=concerts.find(x=>x.id===b.dataset.buy);if(tg?.openLink)tg.openLink(c.url);else window.open(c.url,'_blank')})}
+function renderConcerts(){const list=concerts.filter(c=>state.concertGenre==='all'||c.genre===state.concertGenre);$('concertList').innerHTML=list.map(c=>{const photo=c.image?`<img class="concert-photo" data-concert-image src="${escapeHtml(c.image)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:'';return `<article class="concert-card"><div class="concert-visual ${photo?'has-photo':''}">${photo}<span class="badge">${escapeHtml(c.genre.toUpperCase())}</span><strong>${escapeHtml(c.artist)}</strong></div><div class="concert-body"><div class="concert-meta">${c.date.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}<br>${escapeHtml(c.venue)}</div><div class="concert-bottom"><b>${escapeHtml(c.price)}</b><button data-buy="${c.id}">Купить билет ↗</button></div></div></article>`}).join('');$('concertList').querySelectorAll('[data-concert-image]').forEach(img=>img.addEventListener('error',()=>{img.closest('.concert-visual')?.classList.remove('has-photo');img.remove()},{once:true}));$('concertList').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const c=concerts.find(x=>x.id===b.dataset.buy);if(tg?.openLink)tg.openLink(c.url);else window.open(c.url,'_blank','noopener,noreferrer')})}
 document.querySelectorAll('[data-concert]').forEach(b=>b.onclick=()=>{state.concertGenre=b.dataset.concert;document.querySelectorAll('[data-concert]').forEach(x=>x.classList.toggle('active',x===b));renderConcerts()});
 
 function updateProfile(){$('profileName').textContent=user.first_name||'Пользователь';$('profileUsername').textContent=user.username?'@'+user.username:'Telegram Mini App';$('avatar').textContent=(user.first_name||'П')[0].toUpperCase();$('goingStat').textContent=state.going.size;$('createdStat').textContent=state.events.filter(e=>e.owner).length;$('refStat').textContent=state.refCount}
@@ -158,11 +164,11 @@ state.createdIds=new Set(JSON.parse(localStorage.getItem(CHAIKA_CREATED_KEY)||'[
 async function chaikaRequest(path,{method='GET',body=null}={}){const response=await fetch(`${CHAIKA_DB_URL}/rest/v1/${path}`,{method,headers:{apikey:CHAIKA_DB_KEY,'Content-Type':'application/json','Accept':'application/json'},body:body===null?null:JSON.stringify(body)});const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch{data=text}if(!response.ok){const error=new Error(typeof data==='string'?data:(data?.message||`HTTP ${response.status}`));error.status=response.status;error.data=data;throw error}return data}
 async function chaikaEdge(name,payload){const response=await fetch(`${CHAIKA_DB_URL}/functions/v1/${name}`,{method:'POST',headers:{apikey:CHAIKA_DB_KEY,Authorization:`Bearer ${CHAIKA_EDGE_JWT}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await response.json().catch(()=>({}));if(!response.ok||data?.ok===false){const error=new Error(data?.error||`HTTP ${response.status}`);error.status=response.status;error.data=data;throw error}return data}
 function chaikaDateParts(value){const d=new Date(value),pad=n=>String(n).padStart(2,'0');return {date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,time:`${pad(d.getHours())}:${pad(d.getMinutes())}`}}
-function chaikaEvent(row){const start=chaikaDateParts(row.starts_at),mine=state.going.has(row.id);return {id:row.id,title:row.title,category:row.category,date:start.date,time:start.time,price:Number(row.price_rub||0),venue:row.venue,lat:Number(row.lat),lng:Number(row.lng),ageLimit:Number(row.age_limit||0),promoted:Boolean(row.promoted),description:row.description||'',ticketUrl:row.ticket_url||'',imageData:row.image_url||'',going:Math.max(0,Number(row.going_count||0)-(mine?1:0)),owner:state.createdIds.has(row.id),source:row.source||null,type:row.event_type||'planned',expiresAt:row.expires_at?new Date(row.expires_at).getTime():null}}
-function chaikaConcert(row){return {id:row.id,artist:row.title||row.artist,date:new Date(row.starts_at),venue:row.venue,price:row.price_label||'',genre:row.genre||'other',url:row.ticket_url}}
+function chaikaEvent(row){const start=chaikaDateParts(row.starts_at),mine=state.going.has(row.id);return {id:row.id,title:row.title,category:row.category,date:start.date,time:start.time,price:Number(row.price_rub||0),venue:row.venue,lat:Number(row.lat),lng:Number(row.lng),ageLimit:Number(row.age_limit||0),promoted:Boolean(row.promoted),description:row.description||'',ticketUrl:row.ticket_url||'',imageData:row.image_url||'',going:Math.max(0,Number(row.going_count||0)-(mine?1:0)),owner:state.createdIds.has(row.id),source:row.source||null,type:row.event_type||'planned',startsAt:new Date(row.starts_at).getTime(),expiresAt:row.expires_at?new Date(row.expires_at).getTime():null}}
+function chaikaConcert(row){return {id:row.id,artist:row.title||row.artist,date:new Date(row.starts_at),venue:row.venue,price:row.price_label||'',genre:row.genre||'other',url:row.ticket_url,image:row.image_url||''}}
 
 async function chaikaLoadEvents(showError=false){try{const now=new Date(),staleCutoff=new Date(now.getTime()-HOUR),to=new Date(now.getTime()+31*DAY);const q=new URLSearchParams();q.set('select','id,title,category,event_type,starts_at,expires_at,price_rub,venue,lat,lng,age_limit,description,ticket_url,image_url,promoted,going_count,source');q.append('starts_at',`lte.${to.toISOString()}`);q.set('or',`(expires_at.gt.${now.toISOString()},and(expires_at.is.null,starts_at.gt.${staleCutoff.toISOString()}))`);q.set('order','promoted.desc,starts_at.asc');const rows=await chaikaRequest(`events?${q}`);state.events=(rows||[]).map(chaikaEvent).filter(e=>isEventCurrent(e));renderMap();updateProfile();return true}catch(error){console.error('CHAIKA Supabase events',error);if(showError)toast('Не удалось обновить события');return false}}
-async function chaikaLoadConcerts(){try{const q=new URLSearchParams();q.set('select','id,artist,title,starts_at,venue,genre,price_label,ticket_url');q.append('starts_at',`gte.${new Date().toISOString()}`);q.append('starts_at',`lte.${new Date(Date.now()+366*DAY).toISOString()}`);q.set('order','starts_at.asc');const rows=await chaikaRequest(`concerts?${q}`);if(rows?.length){concerts.splice(0,concerts.length,...rows.map(chaikaConcert));renderConcerts()}return true}catch(error){console.error('CHAIKA Supabase concerts',error);return false}}
+async function chaikaLoadConcerts(){try{const q=new URLSearchParams();q.set('select','id,artist,title,starts_at,venue,genre,price_label,ticket_url,image_url');q.append('starts_at',`gte.${new Date().toISOString()}`);q.append('starts_at',`lte.${new Date(Date.now()+366*DAY).toISOString()}`);q.set('order','starts_at.asc');const rows=await chaikaRequest(`concerts?${q}`);if(rows?.length){concerts.splice(0,concerts.length,...rows.map(chaikaConcert));renderConcerts()}return true}catch(error){console.error('CHAIKA Supabase concerts',error);return false}}
 async function chaikaSync(){await Promise.all([chaikaLoadEvents(false),chaikaLoadConcerts()])}
 function chaikaPruneExpiredEvents(){const before=state.events.length;state.events=state.events.filter(e=>isEventCurrent(e));if(state.events.length===before)return;const selectedStillExists=!state.selectedId||state.events.some(e=>e.id===state.selectedId);if(!selectedStillExists)closeEventSheet();const detailId=els.detail?.dataset?.eventId;if(detailId&&!state.events.some(e=>e.id===detailId))closeEventDetail();renderMap();updateProfile()}
 
@@ -176,7 +182,7 @@ persist=function(){localStorage.setItem('tuda_going',JSON.stringify([...state.go
 /* Attendance stays on the current guest counter until the next server patch. */
 toggleGoing=async function(id){const event=state.events.find(x=>x.id===id);if(!event)return;if(!/^[0-9a-f-]{36}$/i.test(id)){const was=state.going.has(id);was?state.going.delete(id):state.going.add(id);event.going=Math.max(0,Number(event.going||0)+(was?-1:1));persist();renderFeed();if(state.selectedId===id)showEvent(id);updateProfile();return}try{const rows=await chaikaRequest('rpc/toggle_event_attendance',{method:'POST',body:{p_event_id:id,p_client_key:chaikaClientId}}),row=Array.isArray(rows)?rows[0]:rows;if(row?.going)state.going.add(id);else state.going.delete(id);event.going=Math.max(0,Number(row?.going_count||0)-(row?.going?1:0));persist();renderFeed();if(state.selectedId===id)showEvent(id);updateProfile();tg?.HapticFeedback?.impactOccurred('light')}catch(error){console.error('CHAIKA attendance',error);toast('Не удалось обновить «Пойду»')}};
 
-async function chaikaCreateEvent(e){e.preventDefault();e.stopImmediatePropagation();const initData=window.Telegram?.WebApp?.initData||'';if(!initData)return showModeration({status:'review',title:'Открой ЧАЙКУ в Telegram',text:'Просматривать карту можно в браузере, но публиковать события можно только после подтверждения Telegram-профиля.'});if(chaikaAuth.status!=='ready'&&!(await chaikaAuthenticate()))return showModeration({status:'block',title:'Telegram-авторизация недоступна',text:chaikaAuth.error==='bot_not_configured'?'Нужно завершить настройку Telegram-бота в Supabase.':'Перезапусти Mini App из Telegram и попробуй ещё раз.'});const data=Object.fromEntries(new FormData(els.form).entries());if(state.eventType==='planned'){const chosen=new Date(`${data.date}T12:00`),max=new Date(`${dateISO(30)}T23:59`);if(chosen<new Date(`${dateISO(0)}T00:00`)||chosen>max)return showModeration({status:'block',title:'Дата вне диапазона',text:'Пользовательские события можно создавать только на ближайшие 30 дней.'})}const mod=moderate(`${data.title} ${data.description||''} ${data.venue||''}`);if(mod.status==='block'||mod.title==='Нужно исправить текст')return showModeration(mod);if(pendingPhotoData.length>1450000)return showModeration({status:'block',title:'Фото слишком тяжёлое',text:'Выбери фотографию поменьше. После сжатия она должна быть меньше примерно 1 МБ.'});const startsAt=state.eventType==='instant'?new Date():new Date(`${data.date}T${data.time||'20:00'}:00`),expiresAt=state.eventType==='instant'?new Date(Date.now()+Number(data.duration||60)*60*1000):null;const button=els.form.querySelector('button[type="submit"]'),oldText=button.textContent;button.disabled=true;button.textContent='Публикуем…';try{const result=await chaikaEdge('telegram-create-event',{initData,event:{title:data.title.trim(),category:data.category,event_type:state.eventType,starts_at:startsAt.toISOString(),expires_at:expiresAt?expiresAt.toISOString():null,price_rub:Number(data.price||0),venue:data.venue.trim(),lat:Number(data.lat),lng:Number(data.lng),age_limit:Number(data.ageLimit||0),description:(data.description||'').trim(),ticket_url:data.ticketUrl||'',image_url:pendingPhotoData||''}});if(result?.id){state.createdIds.add(result.id);chaikaAuth.createdIds=[...state.createdIds];persist()}const finish=async()=>{els.form.reset();resetPhotoUI();els.form.date.min=dateISO(0);els.form.date.max=dateISO(30);els.form.date.value=dateISO(0);els.form.time.value='20:00';$('categoryInput').value='guitar';document.querySelectorAll('.icon-choice').forEach((x,i)=>x.classList.toggle('active',i===0));setEventType('planned');await chaikaLoadEvents(true);updateProfile()};if(result?.moderation_status==='review')return showModeration({status:'review',title:'Отправлено на модерацию',text:'Событие привязано к твоему Telegram-профилю и появится после проверки.'},finish);showModeration({status:'ok',title:'Событие опубликовано',text:'Готово — событие опубликовано от подтверждённого Telegram-профиля.'},async()=>{await finish();switchView('mapView');const event=state.events.find(x=>x.id===result?.id);if(event)setTimeout(()=>{map.setView([event.lat,event.lng],14);showEvent(event.id)},100);tg?.HapticFeedback?.notificationOccurred('success')})}catch(error){console.error('CHAIKA secure create',error);const blocked=String(error.message||'').includes('event_blocked');showModeration({status:'block',title:blocked?'Публикация отклонена':'Не удалось создать событие',text:blocked?'Серверная модерация обнаружила запрещённое или опасное содержание.':'Проверь данные и попробуй ещё раз.'})}finally{button.disabled=false;button.textContent=oldText}}
+async function chaikaCreateEvent(e){e.preventDefault();e.stopImmediatePropagation();const initData=window.Telegram?.WebApp?.initData||'';if(!initData)return showModeration({status:'review',title:'Открой ЧАЙКУ в Telegram',text:'Просматривать карту можно в браузере, но публиковать события можно только после подтверждения Telegram-профиля.'});if(chaikaAuth.status!=='ready'&&!(await chaikaAuthenticate()))return showModeration({status:'block',title:'Telegram-авторизация недоступна',text:chaikaAuth.error==='bot_not_configured'?'Нужно завершить настройку Telegram-бота в Supabase.':'Перезапусти Mini App из Telegram и попробуй ещё раз.'});const data=Object.fromEntries(new FormData(els.form).entries()),latRaw=String(data.lat||'').trim(),lngRaw=String(data.lng||'').trim(),lat=Number(latRaw),lng=Number(lngRaw),startsAt=chaikaPeopleStartDate(data.time),duration=Number(data.duration);if(!latRaw||!lngRaw||!Number.isFinite(lat)||!Number.isFinite(lng))return showModeration({status:'block',title:'Не выбрана точка',text:'Поставь точку на карте или используй свою геопозицию.'});if(!startsAt||!Number.isFinite(duration)||duration<15||duration>1440)return showModeration({status:'block',title:'Проверь время',text:'Укажи время начала и длительность не больше 24 часов.'});const mod=moderate(`${data.title} ${data.description||''} ${data.ticketUrl||''}`);if(mod.status==='block'||mod.title==='Нужно исправить текст')return showModeration(mod);const expiresAt=new Date(startsAt.getTime()+duration*MINUTE),button=els.form.querySelector('button[type="submit"]'),oldText=button.textContent;button.disabled=true;button.textContent='Публикуем…';try{const result=await chaikaEdge('telegram-create-event',{initData,event:{title:data.title.trim(),category:data.category,event_type:'instant',starts_at:startsAt.toISOString(),expires_at:expiresAt.toISOString(),price_rub:0,venue:'Точка на карте',lat,lng,age_limit:0,description:(data.description||'').trim(),ticket_url:data.ticketUrl||'',image_url:''}});if(result?.id){state.createdIds.add(result.id);chaikaAuth.createdIds=[...state.createdIds];persist()}const finish=async()=>{window.chaikaSetMapCreatorType?.('people');els.form.reset();resetPhotoUI();els.form.elements.namedItem('time').value=chaikaDefaultPeopleTime();$('categoryInput').value='guitar';document.querySelectorAll('.icon-choice').forEach((x,i)=>x.classList.toggle('active',i===0));setEventType();await chaikaLoadEvents(true);updateProfile()};if(result?.moderation_status==='review')return showModeration({status:'review',title:'Отправлено на модерацию',text:'Событие привязано к твоему Telegram-профилю и появится после проверки.'},finish);showModeration({status:'ok',title:'Событие опубликовано',text:'Готово — событие появилось на карте.'},async()=>{await finish();switchView('mapView');const event=state.events.find(x=>x.id===result?.id);if(event)setTimeout(()=>{map.setView([event.lat,event.lng],14);showEvent(event.id)},100);tg?.HapticFeedback?.notificationOccurred('success')})}catch(error){console.error('CHAIKA secure create',error);const blocked=String(error.message||'').includes('event_blocked');showModeration({status:'block',title:blocked?'Публикация отклонена':'Не удалось создать событие',text:blocked?'Серверная модерация обнаружила запрещённое или опасное содержание.':'Проверь данные и попробуй ещё раз.'})}finally{button.disabled=false;button.textContent=oldText}}
 els.form.addEventListener('submit',chaikaCreateEvent,true);
 
 $('resetBtn').onclick=()=>{localStorage.removeItem('tuda_events');localStorage.removeItem('tuda_going');localStorage.removeItem('tuda_refCount');localStorage.removeItem(CHAIKA_CREATED_KEY);localStorage.removeItem(CHAIKA_CLIENT_KEY);location.reload()};
@@ -203,25 +209,30 @@ function chaikaInjectEnhancementStyles(){
 }
 
 function chaikaEnsureLocationPicker(){
-  if(document.getElementById('chaikaPickLocationBtn'))return;
-  const coords=document.querySelector('#eventForm .coords-row');
-  if(!coords)return;
-  const tools=document.createElement('div');
-  tools.className='chaika-location-tools';
-  tools.innerHTML='<button id="chaikaPickLocationBtn" class="secondary-btn small" type="button">Выбрать точку на карте</button><p id="chaikaLocationNote" class="chaika-location-note">Можно указать координаты вручную, взять геолокацию или ткнуть точку на карте.</p>';
-  coords.insertAdjacentElement('afterend',tools);
-  $('chaikaPickLocationBtn').addEventListener('click',()=>{
+  let button=document.getElementById('chaikaPickLocationBtn');
+  if(!button){
+    const coords=document.querySelector('#eventForm .coords-row');
+    if(!coords)return;
+    const tools=document.createElement('div');
+    tools.className='chaika-location-tools';
+    tools.innerHTML='<button id="chaikaPickLocationBtn" class="secondary-btn small" type="button">Поставить точку на карте</button><p id="chaikaLocationNote" class="chaika-location-note">Выбери место на карте или используй свою геопозицию.</p>';
+    coords.insertAdjacentElement('afterend',tools);
+    button=$('chaikaPickLocationBtn');
+  }
+  if(button.dataset.chaikaBound==='1')return;
+  button.dataset.chaikaBound='1';
+  button.addEventListener('click',()=>{
     chaikaPickingLocation=true;
     map.getContainer().classList.add('chaika-picking');
-    $('chaikaPickLocationBtn').textContent='Ткни точку на карте…';
+    button.textContent='Нажми на карту…';
     switchView('mapView');
     toast('Нажми на нужное место на карте');
   });
 }
 
 function chaikaSetChosenPoint(lat,lng,returnToForm=false){
-  els.form.lat.value=Number(lat).toFixed(6);
-  els.form.lng.value=Number(lng).toFixed(6);
+  els.form.elements.namedItem('lat').value=Number(lat).toFixed(6);
+  els.form.elements.namedItem('lng').value=Number(lng).toFixed(6);
   if(!chaikaPlacementMarker){
     chaikaPlacementMarker=L.marker([lat,lng],{draggable:true,zIndexOffset:1200}).addTo(map);
     chaikaPlacementMarker.on('dragend',()=>{
@@ -235,7 +246,7 @@ function chaikaSetChosenPoint(lat,lng,returnToForm=false){
   const btn=$('chaikaPickLocationBtn');
   if(btn)btn.textContent='Изменить точку на карте';
   const note=$('chaikaLocationNote');
-  if(note)note.textContent=`Выбрано: ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+  if(note)note.textContent='Точка выбрана';
   if(returnToForm)setTimeout(()=>switchView('createView'),160);
 }
 
@@ -243,10 +254,12 @@ function chaikaResetPointPicker(){
   chaikaPickingLocation=false;
   map.getContainer().classList.remove('chaika-picking');
   if(chaikaPlacementMarker){map.removeLayer(chaikaPlacementMarker);chaikaPlacementMarker=null}
+  const lat=els.form.elements.namedItem('lat'),lng=els.form.elements.namedItem('lng');
+  if(lat)lat.value='';if(lng)lng.value='';
   const btn=$('chaikaPickLocationBtn');
   if(btn)btn.textContent='Выбрать точку на карте';
   const note=$('chaikaLocationNote');
-  if(note)note.textContent='Можно указать координаты вручную, взять геолокацию или ткнуть точку на карте.';
+  if(note)note.textContent='Выбери место на карте или используй свою геопозицию.';
 }
 
 map.on('click',e=>{
@@ -293,7 +306,7 @@ renderMap=function(){
 
 function chaikaManagedToEvent(row){
   const start=chaikaDateParts(row.starts_at);
-  return {id:row.id,title:row.title,category:row.category,date:start.date,time:start.time,price:Number(row.price_rub||0),venue:row.venue||'',lat:Number(row.lat),lng:Number(row.lng),ageLimit:Number(row.age_limit||0),promoted:Boolean(row.promoted),description:row.description||'',ticketUrl:row.ticket_url||'',imageData:row.image_url||'',going:Number(row.going_count||0),owner:true,type:row.event_type||'planned',expiresAt:row.expires_at?new Date(row.expires_at).getTime():null,moderationStatus:row.moderation_status||'review'};
+  return {id:row.id,title:row.title,category:row.category,date:start.date,time:start.time,price:Number(row.price_rub||0),venue:row.venue||'',lat:Number(row.lat),lng:Number(row.lng),ageLimit:Number(row.age_limit||0),promoted:Boolean(row.promoted),description:row.description||'',ticketUrl:row.ticket_url||'',imageData:row.image_url||'',going:Number(row.going_count||0),owner:true,source:row.source||null,type:row.event_type||'planned',startsAt:new Date(row.starts_at).getTime(),expiresAt:row.expires_at?new Date(row.expires_at).getTime():null,moderationStatus:row.moderation_status||'review'};
 }
 function chaikaStatusLabel(status){return status==='published'?'Опубликовано':status==='rejected'?'Отклонено':'На проверке'}
 function chaikaEnsureManagementUI(){
@@ -313,7 +326,7 @@ function chaikaEnsureManagementUI(){
 function chaikaManagedEventCard(row,admin=false){
   const e=chaikaManagedToEvent(row),status=row.moderation_status||'review';
   const adminButtons=admin?`${status!=='published'?`<button class="approve" data-admin-decision="published" data-event-id="${row.id}">Одобрить</button>`:''}${status!=='rejected'?`<button data-admin-decision="rejected" data-event-id="${row.id}">Отклонить</button>`:''}`:'';
-  return `<article class="chaika-manage-item"><div class="chaika-manage-top"><div><div class="chaika-manage-title">${escapeHtml(row.title)}</div><div class="chaika-manage-meta">${formatDate(e)} · ${escapeHtml(row.venue||'')} ${row.promoted?'· PREMIUM':''}</div></div><span class="chaika-status ${status}">${chaikaStatusLabel(status)}</span></div><div class="chaika-manage-actions"><button data-managed-open="${row.id}" data-managed-source="${admin?'admin':'mine'}">Открыть</button>${adminButtons}<button class="danger" data-managed-delete="${row.id}">Удалить</button></div></article>`;
+  return `<article class="chaika-manage-item"><div class="chaika-manage-top"><div><div class="chaika-manage-title">${escapeHtml(row.title)}</div><div class="chaika-manage-meta">${eventListMeta(e)}</div></div><span class="chaika-status ${status}">${chaikaStatusLabel(status)}</span></div><div class="chaika-manage-actions"><button data-managed-open="${row.id}" data-managed-source="${admin?'admin':'mine'}">Открыть</button>${adminButtons}<button class="danger" data-managed-delete="${row.id}">Удалить</button></div></article>`;
 }
 function chaikaRenderManagementPanels(){
   chaikaEnsureManagementUI();
@@ -372,7 +385,8 @@ function chaikaOpenManagedEvent(id,source='mine'){
   els.detailHero.querySelectorAll('.event-detail-photo').forEach(x=>x.remove());
   if(e.imageData){const img=document.createElement('img');img.className='event-detail-photo';img.src=e.imageData;img.alt='';els.detailHero.prepend(img)}
   els.detailHeroIcon.innerHTML=svgIcon(cat.icon);
-  els.detailBody.innerHTML=`<div class="chaika-detail-status"><span class="chaika-status ${e.moderationStatus}">${chaikaStatusLabel(e.moderationStatus)}</span></div>${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}<h2>${escapeHtml(e.title)}</h2><div class="detail-meta-row"><span>${formatDate(e)}</span><span>${e.price?e.price+' ₽':'Бесплатно'}</span><span>${escapeHtml(e.venue)}</span><span>${e.ageLimit}+</span></div><div class="detail-section"><h3>О событии</h3><p>${escapeHtml(e.description||'Описание пока не добавлено.')}</p></div>`;
+  els.detailBody.innerHTML=`<div class="chaika-detail-status"><span class="chaika-status ${e.moderationStatus}">${chaikaStatusLabel(e.moderationStatus)}</span></div>${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}<h2>${escapeHtml(e.title)}</h2><div class="detail-meta-row">${eventDetailMeta(e)}</div><div class="detail-section"><h3>О событии</h3><p>${escapeHtml(e.description||'Описание пока не добавлено.')}</p></div>${e.ticketUrl?`<div class="detail-actions"><button class="secondary-btn event-contact-action" data-managed-link>Связаться</button></div>`:''}`;
+  const contact=els.detailBody.querySelector('[data-managed-link]');if(contact)contact.onclick=()=>openEventLink(e.ticketUrl);
   els.detail.classList.remove('hidden');els.detail.setAttribute('aria-hidden','false');tg?.BackButton?.show?.();
 }
 async function chaikaDeleteManagedEvent(eventId){
@@ -468,18 +482,20 @@ chaikaBootstrapManagement();
 
 /* CHAIKA safety + stable event deep links. Loaded after Supabase and map enhancements. */
 
-const chaikaSafetyLatinToCyr={a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'};
+const chaikaSafetyLatinToCyr={a:'а',b:'в',c:'с',d:'д',e:'е',f:'ф',g:'г',h:'х',i:'и',j:'й',k:'к',l:'л',m:'м',n:'н',o:'о',p:'р',q:'к',r:'р',s:'с',t:'т',u:'у',v:'в',w:'ш',x:'х',y:'у',z:'з'};
 const chaikaSafetyCyrToLatin={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',и:'i',й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const chaikaSafetyGreekToCyr={α:'а',β:'в',ε:'е',ι:'и',κ:'к',ν:'н',ο:'о',ρ:'р',σ:'с',ς:'с',τ:'т',υ:'у',χ:'х'};
+const chaikaSafetyGreekToLatin={α:'a',β:'b',ε:'e',ι:'i',κ:'k',ν:'n',ο:'o',ρ:'r',σ:'s',ς:'s',τ:'t',υ:'u',χ:'h'};
+const chaikaSafetySymbolToCyr={'@':'а','₽':'р','0':'о','1':'и','3':'з','4':'ч','6':'б','8':'в','$':'с','€':'е'};
+const chaikaSafetySymbolToLatin={'@':'a','₽':'r','0':'o','1':'i','3':'e','4':'a','6':'b','8':'b','$':'s','€':'e'};
 function chaikaSafetySplit(s=''){
   const spaced=String(s).replace(/[^a-zа-я0-9]+/giu,' ').replace(/\s+/g,' ').trim();
   return {spaced,compact:spaced.replace(/\s+/g,'')};
 }
 function chaikaSafetyNormalize(raw=''){
   const src=String(raw).normalize('NFKC').toLowerCase().replace(/ё/g,'е').replace(/[\u200B-\u200D\uFEFF]/g,'');
-  const cyrLeet=src.replace(/[0346@$]/g,ch=>({'0':'о','3':'з','4':'ч','6':'б','@':'а','$':'с'}[ch]||ch));
-  const cyr=chaikaSafetySplit(cyrLeet.replace(/[aceopxykmthb]/g,ch=>chaikaSafetyLatinToCyr[ch]||ch));
-  const latLeet=src.replace(/[0134@$]/g,ch=>({'0':'o','1':'i','3':'e','4':'a','@':'a','$':'s'}[ch]||ch));
-  const lat=chaikaSafetySplit([...latLeet].map(ch=>chaikaSafetyCyrToLatin[ch]??ch).join(''));
+  const cyr=chaikaSafetySplit([...src].map(ch=>chaikaSafetySymbolToCyr[ch]??chaikaSafetyLatinToCyr[ch]??chaikaSafetyGreekToCyr[ch]??ch).join(''));
+  const lat=chaikaSafetySplit([...src].map(ch=>chaikaSafetySymbolToLatin[ch]??chaikaSafetyCyrToLatin[ch]??chaikaSafetyGreekToLatin[ch]??ch).join(''));
   return {spaced:cyr.spaced,compact:cyr.compact,latinSpaced:lat.spaced,latinCompact:lat.compact};
 }
 function chaikaSafetyHas(v,terms){return terms.some(term=>v.includes(term))}
@@ -487,10 +503,10 @@ function chaikaSafetyPattern(values,patterns){return patterns.some(r=>values.som
 
 const chaikaSafetyHardRu=[
   'наркот','закладк','кладмен','героин','кокаин','амфетамин','метамфетамин','мефедрон','марихуан','каннабис','экстази','псилоциб',
-  'оружи','боеприпас','взрывчат','террор','экстрем','проституц','интимуслуг','сексзаденьги',
+  'оружи','боеприпас','взрывчат','террор','экстрем','проститут','проституц','интимуслуг','сексуслуг','сексзаденьги','эскортуслуг','досугдевуш','девушканачас',
   'массовоеубий','массовыйрасстрел','жертвопринош','человеческаяжертв','ритуальноеубий','изнасил','сексуальноенасили','самоубий','суицид','живодер'
 ];
-const chaikaSafetyHardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape','prostitution'];
+const chaikaSafetyHardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape','prostitut','sexservice','escortservice','dosugdevush'];
 const chaikaSafetyHardPatterns=[
   /массов\S*\s+(убий|расстрел|резн)/u,
   /убить\s+(люд|человек|кого|всех)/u,
@@ -792,24 +808,25 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
       const box = document.createElement('div');
       box.id = 'chaikaLocationConfirm';
       box.className = 'chaika-location-confirm';
-      box.innerHTML = '<strong>Поставить точку здесь?</strong><button class="no" type="button">Нет</button><button class="yes" type="button">Да</button>';
+      box.innerHTML = `<strong>${chaikaPickingLocation?'Поставить точку здесь?':'Создать событие?'}</strong><button class="no" type="button">Нет</button><button class="yes" type="button">Да</button>`;
       document.getElementById('mapView').appendChild(box);
       box.querySelector('.no').onclick = clearPreview;
       box.querySelector('.yes').onclick = () => {
         const point = pendingLatLng;
         clearPreview();
         if (!point) return;
+        window.chaikaSetMapCreatorType?.('people');
         chaikaSetChosenPoint(point.lat, point.lng, true);
         tg?.HapticFeedback?.notificationOccurred?.('success');
       };
     };
 
     container.addEventListener('pointerdown', event => {
-      if (!chaikaPickingLocation || event.button > 0) return;
+      if (event.button > 0) return;
       if (event.target.closest('.leaflet-marker-icon,.leaflet-control,button,input,select,textarea')) return;
       start = { x: event.clientX, y: event.clientY };
       timer = setTimeout(() => {
-        if (!start || !chaikaPickingLocation) return;
+        if (!start) return;
         const rect = container.getBoundingClientRect();
         const point = L.point(start.x - rect.left, start.y - rect.top);
         const latlng = map.containerPointToLatLng(point);
@@ -946,6 +963,7 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
     setTimeout(() => { if (stress.enabled) stress.enable(count); }, 1600);
   }
 })();
+
 
 /* CHAIKA Telegram forum chat integration (rev9). */
 (() => {
@@ -1421,7 +1439,7 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
         <div class="chaika-group-list">
           ${group.map(event => {
             const cat = categoryMap[event.category] || categoryMap.other;
-            return `<button class="chaika-group-event" data-group-event="${event.id}" type="button"><div class="event-type-icon" ${catStyle(event.category)}>${svgIcon(cat.icon)}</div><div>${event.promoted ? '<span class="badge">ПРЕМИУМ</span>' : ''}<h4>${escapeHtml(event.title)}</h4><p>${formatDate(event)} · ${event.price ? event.price + ' ₽' : 'Бесплатно'}<br>${escapeHtml(event.venue)}</p></div><span class="chaika-group-chevron">›</span></button>`;
+            return `<button class="chaika-group-event" data-group-event="${event.id}" type="button"><div class="event-type-icon" ${catStyle(event.category)}>${svgIcon(cat.icon)}</div><div>${event.promoted ? '<span class="badge">ПРЕМИУМ</span>' : ''}<h4>${escapeHtml(event.title)}</h4><p>${eventListMeta(event)}</p></div><span class="chaika-group-chevron">›</span></button>`;
           }).join('')}
         </div>
       </div>`;
@@ -1570,11 +1588,11 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
     isWithinTime = function(event) {
       const today = tzParts(new Date()).date;
       const eventDate = String(event?.date || '');
+      const now = Date.now();
+      const startsAt = typeof eventStartsAt === 'function' ? eventStartsAt(event) : new Date(`${eventDate}T${event?.time||'00:00'}:00`).getTime();
+      if (typeof isEventCurrent === 'function' && !isEventCurrent(event, now)) return false;
       if (state.time === 'now') {
-        return event?.type === 'instant' && (!event.expiresAt || event.expiresAt > Date.now());
-      }
-      if (event?.type === 'instant' && state.time === 'today') {
-        return !event.expiresAt || event.expiresAt > Date.now();
+        return event?.type === 'instant' && startsAt <= now;
       }
       if (state.time === 'today') return eventDate === today;
       if (state.time === 'tomorrow') return eventDate === addCalendarDays(today, 1);

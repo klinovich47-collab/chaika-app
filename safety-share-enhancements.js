@@ -1,17 +1,19 @@
 /* CHAIKA safety + stable event deep links. Loaded after Supabase and map enhancements. */
 
-const chaikaSafetyLatinToCyr={a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'};
+const chaikaSafetyLatinToCyr={a:'а',b:'в',c:'с',d:'д',e:'е',f:'ф',g:'г',h:'х',i:'и',j:'й',k:'к',l:'л',m:'м',n:'н',o:'о',p:'р',q:'к',r:'р',s:'с',t:'т',u:'у',v:'в',w:'ш',x:'х',y:'у',z:'з'};
 const chaikaSafetyCyrToLatin={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',и:'i',й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const chaikaSafetyGreekToCyr={α:'а',β:'в',ε:'е',ι:'и',κ:'к',ν:'н',ο:'о',ρ:'р',σ:'с',ς:'с',τ:'т',υ:'у',χ:'х'};
+const chaikaSafetyGreekToLatin={α:'a',β:'b',ε:'e',ι:'i',κ:'k',ν:'n',ο:'o',ρ:'r',σ:'s',ς:'s',τ:'t',υ:'u',χ:'h'};
+const chaikaSafetySymbolToCyr={'@':'а','₽':'р','0':'о','1':'и','3':'з','4':'ч','6':'б','8':'в','$':'с','€':'е'};
+const chaikaSafetySymbolToLatin={'@':'a','₽':'r','0':'o','1':'i','3':'e','4':'a','6':'b','8':'b','$':'s','€':'e'};
 function chaikaSafetySplit(s=''){
   const spaced=String(s).replace(/[^a-zа-я0-9]+/giu,' ').replace(/\s+/g,' ').trim();
   return {spaced,compact:spaced.replace(/\s+/g,'')};
 }
 function chaikaSafetyNormalize(raw=''){
   const src=String(raw).normalize('NFKC').toLowerCase().replace(/ё/g,'е').replace(/[\u200B-\u200D\uFEFF]/g,'');
-  const cyrLeet=src.replace(/[0346@$]/g,ch=>({'0':'о','3':'з','4':'ч','6':'б','@':'а','$':'с'}[ch]||ch));
-  const cyr=chaikaSafetySplit(cyrLeet.replace(/[aceopxykmthb]/g,ch=>chaikaSafetyLatinToCyr[ch]||ch));
-  const latLeet=src.replace(/[0134@$]/g,ch=>({'0':'o','1':'i','3':'e','4':'a','@':'a','$':'s'}[ch]||ch));
-  const lat=chaikaSafetySplit([...latLeet].map(ch=>chaikaSafetyCyrToLatin[ch]??ch).join(''));
+  const cyr=chaikaSafetySplit([...src].map(ch=>chaikaSafetySymbolToCyr[ch]??chaikaSafetyLatinToCyr[ch]??chaikaSafetyGreekToCyr[ch]??ch).join(''));
+  const lat=chaikaSafetySplit([...src].map(ch=>chaikaSafetySymbolToLatin[ch]??chaikaSafetyCyrToLatin[ch]??chaikaSafetyGreekToLatin[ch]??ch).join(''));
   return {spaced:cyr.spaced,compact:cyr.compact,latinSpaced:lat.spaced,latinCompact:lat.compact};
 }
 function chaikaSafetyHas(v,terms){return terms.some(term=>v.includes(term))}
@@ -19,10 +21,10 @@ function chaikaSafetyPattern(values,patterns){return patterns.some(r=>values.som
 
 const chaikaSafetyHardRu=[
   'наркот','закладк','кладмен','героин','кокаин','амфетамин','метамфетамин','мефедрон','марихуан','каннабис','экстази','псилоциб',
-  'оружи','боеприпас','взрывчат','террор','экстрем','проституц','интимуслуг','сексзаденьги',
+  'оружи','боеприпас','взрывчат','террор','экстрем','проститут','проституц','интимуслуг','сексуслуг','сексзаденьги','эскортуслуг','досугдевуш','девушканачас',
   'массовоеубий','массовыйрасстрел','жертвопринош','человеческаяжертв','ритуальноеубий','изнасил','сексуальноенасили','самоубий','суицид','живодер'
 ];
-const chaikaSafetyHardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape','prostitution'];
+const chaikaSafetyHardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape','prostitut','sexservice','escortservice','dosugdevush'];
 const chaikaSafetyHardPatterns=[
   /массов\S*\s+(убий|расстрел|резн)/u,
   /убить\s+(люд|человек|кого|всех)/u,

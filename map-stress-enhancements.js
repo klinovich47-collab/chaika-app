@@ -183,24 +183,25 @@
       const box = document.createElement('div');
       box.id = 'chaikaLocationConfirm';
       box.className = 'chaika-location-confirm';
-      box.innerHTML = '<strong>Поставить точку здесь?</strong><button class="no" type="button">Нет</button><button class="yes" type="button">Да</button>';
+      box.innerHTML = `<strong>${chaikaPickingLocation?'Поставить точку здесь?':'Создать событие?'}</strong><button class="no" type="button">Нет</button><button class="yes" type="button">Да</button>`;
       document.getElementById('mapView').appendChild(box);
       box.querySelector('.no').onclick = clearPreview;
       box.querySelector('.yes').onclick = () => {
         const point = pendingLatLng;
         clearPreview();
         if (!point) return;
+        window.chaikaSetMapCreatorType?.('people');
         chaikaSetChosenPoint(point.lat, point.lng, true);
         tg?.HapticFeedback?.notificationOccurred?.('success');
       };
     };
 
     container.addEventListener('pointerdown', event => {
-      if (!chaikaPickingLocation || event.button > 0) return;
+      if (event.button > 0) return;
       if (event.target.closest('.leaflet-marker-icon,.leaflet-control,button,input,select,textarea')) return;
       start = { x: event.clientX, y: event.clientY };
       timer = setTimeout(() => {
-        if (!start || !chaikaPickingLocation) return;
+        if (!start) return;
         const rect = container.getBoundingClientRect();
         const point = L.point(start.x - rect.left, start.y - rect.top);
         const latlng = map.containerPointToLatLng(point);

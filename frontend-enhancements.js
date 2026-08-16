@@ -14,25 +14,30 @@ function chaikaInjectEnhancementStyles(){
 }
 
 function chaikaEnsureLocationPicker(){
-  if(document.getElementById('chaikaPickLocationBtn'))return;
-  const coords=document.querySelector('#eventForm .coords-row');
-  if(!coords)return;
-  const tools=document.createElement('div');
-  tools.className='chaika-location-tools';
-  tools.innerHTML='<button id="chaikaPickLocationBtn" class="secondary-btn small" type="button">Выбрать точку на карте</button><p id="chaikaLocationNote" class="chaika-location-note">Можно указать координаты вручную, взять геолокацию или ткнуть точку на карте.</p>';
-  coords.insertAdjacentElement('afterend',tools);
-  $('chaikaPickLocationBtn').addEventListener('click',()=>{
+  let button=document.getElementById('chaikaPickLocationBtn');
+  if(!button){
+    const coords=document.querySelector('#eventForm .coords-row');
+    if(!coords)return;
+    const tools=document.createElement('div');
+    tools.className='chaika-location-tools';
+    tools.innerHTML='<button id="chaikaPickLocationBtn" class="secondary-btn small" type="button">Поставить точку на карте</button><p id="chaikaLocationNote" class="chaika-location-note">Выбери место на карте или используй свою геопозицию.</p>';
+    coords.insertAdjacentElement('afterend',tools);
+    button=$('chaikaPickLocationBtn');
+  }
+  if(button.dataset.chaikaBound==='1')return;
+  button.dataset.chaikaBound='1';
+  button.addEventListener('click',()=>{
     chaikaPickingLocation=true;
     map.getContainer().classList.add('chaika-picking');
-    $('chaikaPickLocationBtn').textContent='Ткни точку на карте…';
+    button.textContent='Нажми на карту…';
     switchView('mapView');
     toast('Нажми на нужное место на карте');
   });
 }
 
 function chaikaSetChosenPoint(lat,lng,returnToForm=false){
-  els.form.lat.value=Number(lat).toFixed(6);
-  els.form.lng.value=Number(lng).toFixed(6);
+  els.form.elements.namedItem('lat').value=Number(lat).toFixed(6);
+  els.form.elements.namedItem('lng').value=Number(lng).toFixed(6);
   if(!chaikaPlacementMarker){
     chaikaPlacementMarker=L.marker([lat,lng],{draggable:true,zIndexOffset:1200}).addTo(map);
     chaikaPlacementMarker.on('dragend',()=>{
@@ -46,7 +51,7 @@ function chaikaSetChosenPoint(lat,lng,returnToForm=false){
   const btn=$('chaikaPickLocationBtn');
   if(btn)btn.textContent='Изменить точку на карте';
   const note=$('chaikaLocationNote');
-  if(note)note.textContent=`Выбрано: ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+  if(note)note.textContent='Точка выбрана';
   if(returnToForm)setTimeout(()=>switchView('createView'),160);
 }
 
@@ -54,10 +59,12 @@ function chaikaResetPointPicker(){
   chaikaPickingLocation=false;
   map.getContainer().classList.remove('chaika-picking');
   if(chaikaPlacementMarker){map.removeLayer(chaikaPlacementMarker);chaikaPlacementMarker=null}
+  const lat=els.form.elements.namedItem('lat'),lng=els.form.elements.namedItem('lng');
+  if(lat)lat.value='';if(lng)lng.value='';
   const btn=$('chaikaPickLocationBtn');
   if(btn)btn.textContent='Выбрать точку на карте';
   const note=$('chaikaLocationNote');
-  if(note)note.textContent='Можно указать координаты вручную, взять геолокацию или ткнуть точку на карте.';
+  if(note)note.textContent='Выбери место на карте или используй свою геопозицию.';
 }
 
 map.on('click',e=>{
@@ -104,7 +111,7 @@ renderMap=function(){
 
 function chaikaManagedToEvent(row){
   const start=chaikaDateParts(row.starts_at);
-  return {id:row.id,title:row.title,category:row.category,date:start.date,time:start.time,price:Number(row.price_rub||0),venue:row.venue||'',lat:Number(row.lat),lng:Number(row.lng),ageLimit:Number(row.age_limit||0),promoted:Boolean(row.promoted),description:row.description||'',ticketUrl:row.ticket_url||'',imageData:row.image_url||'',going:Number(row.going_count||0),owner:true,type:row.event_type||'planned',expiresAt:row.expires_at?new Date(row.expires_at).getTime():null,moderationStatus:row.moderation_status||'review'};
+  return {id:row.id,title:row.title,category:row.category,date:start.date,time:start.time,price:Number(row.price_rub||0),venue:row.venue||'',lat:Number(row.lat),lng:Number(row.lng),ageLimit:Number(row.age_limit||0),promoted:Boolean(row.promoted),description:row.description||'',ticketUrl:row.ticket_url||'',imageData:row.image_url||'',going:Number(row.going_count||0),owner:true,source:row.source||null,type:row.event_type||'planned',startsAt:new Date(row.starts_at).getTime(),expiresAt:row.expires_at?new Date(row.expires_at).getTime():null,moderationStatus:row.moderation_status||'review'};
 }
 function chaikaStatusLabel(status){return status==='published'?'Опубликовано':status==='rejected'?'Отклонено':'На проверке'}
 function chaikaEnsureManagementUI(){
@@ -124,7 +131,7 @@ function chaikaEnsureManagementUI(){
 function chaikaManagedEventCard(row,admin=false){
   const e=chaikaManagedToEvent(row),status=row.moderation_status||'review';
   const adminButtons=admin?`${status!=='published'?`<button class="approve" data-admin-decision="published" data-event-id="${row.id}">Одобрить</button>`:''}${status!=='rejected'?`<button data-admin-decision="rejected" data-event-id="${row.id}">Отклонить</button>`:''}`:'';
-  return `<article class="chaika-manage-item"><div class="chaika-manage-top"><div><div class="chaika-manage-title">${escapeHtml(row.title)}</div><div class="chaika-manage-meta">${formatDate(e)} · ${escapeHtml(row.venue||'')} ${row.promoted?'· PREMIUM':''}</div></div><span class="chaika-status ${status}">${chaikaStatusLabel(status)}</span></div><div class="chaika-manage-actions"><button data-managed-open="${row.id}" data-managed-source="${admin?'admin':'mine'}">Открыть</button>${adminButtons}<button class="danger" data-managed-delete="${row.id}">Удалить</button></div></article>`;
+  return `<article class="chaika-manage-item"><div class="chaika-manage-top"><div><div class="chaika-manage-title">${escapeHtml(row.title)}</div><div class="chaika-manage-meta">${eventListMeta(e)}</div></div><span class="chaika-status ${status}">${chaikaStatusLabel(status)}</span></div><div class="chaika-manage-actions"><button data-managed-open="${row.id}" data-managed-source="${admin?'admin':'mine'}">Открыть</button>${adminButtons}<button class="danger" data-managed-delete="${row.id}">Удалить</button></div></article>`;
 }
 function chaikaRenderManagementPanels(){
   chaikaEnsureManagementUI();
@@ -183,7 +190,8 @@ function chaikaOpenManagedEvent(id,source='mine'){
   els.detailHero.querySelectorAll('.event-detail-photo').forEach(x=>x.remove());
   if(e.imageData){const img=document.createElement('img');img.className='event-detail-photo';img.src=e.imageData;img.alt='';els.detailHero.prepend(img)}
   els.detailHeroIcon.innerHTML=svgIcon(cat.icon);
-  els.detailBody.innerHTML=`<div class="chaika-detail-status"><span class="chaika-status ${e.moderationStatus}">${chaikaStatusLabel(e.moderationStatus)}</span></div>${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}<h2>${escapeHtml(e.title)}</h2><div class="detail-meta-row"><span>${formatDate(e)}</span><span>${e.price?e.price+' ₽':'Бесплатно'}</span><span>${escapeHtml(e.venue)}</span><span>${e.ageLimit}+</span></div><div class="detail-section"><h3>О событии</h3><p>${escapeHtml(e.description||'Описание пока не добавлено.')}</p></div>`;
+  els.detailBody.innerHTML=`<div class="chaika-detail-status"><span class="chaika-status ${e.moderationStatus}">${chaikaStatusLabel(e.moderationStatus)}</span></div>${e.promoted?'<span class="badge">ПРЕМИУМ</span>':''}<h2>${escapeHtml(e.title)}</h2><div class="detail-meta-row">${eventDetailMeta(e)}</div><div class="detail-section"><h3>О событии</h3><p>${escapeHtml(e.description||'Описание пока не добавлено.')}</p></div>${e.ticketUrl?`<div class="detail-actions"><button class="secondary-btn event-contact-action" data-managed-link>Связаться</button></div>`:''}`;
+  const contact=els.detailBody.querySelector('[data-managed-link]');if(contact)contact.onclick=()=>openEventLink(e.ticketUrl);
   els.detail.classList.remove('hidden');els.detail.setAttribute('aria-hidden','false');tg?.BackButton?.show?.();
 }
 async function chaikaDeleteManagedEvent(eventId){

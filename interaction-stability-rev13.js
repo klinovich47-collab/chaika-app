@@ -29,11 +29,11 @@
     isWithinTime = function(event) {
       const today = tzParts(new Date()).date;
       const eventDate = String(event?.date || '');
+      const now = Date.now();
+      const startsAt = typeof eventStartsAt === 'function' ? eventStartsAt(event) : new Date(`${eventDate}T${event?.time||'00:00'}:00`).getTime();
+      if (typeof isEventCurrent === 'function' && !isEventCurrent(event, now)) return false;
       if (state.time === 'now') {
-        return event?.type === 'instant' && (!event.expiresAt || event.expiresAt > Date.now());
-      }
-      if (event?.type === 'instant' && state.time === 'today') {
-        return !event.expiresAt || event.expiresAt > Date.now();
+        return event?.type === 'instant' && startsAt <= now;
       }
       if (state.time === 'today') return eventDate === today;
       if (state.time === 'tomorrow') return eventDate === addCalendarDays(today, 1);

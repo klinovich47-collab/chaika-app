@@ -227,7 +227,7 @@
         <div class="chaika-group-list">
           ${group.map(event => {
             const cat = categoryMap[event.category] || categoryMap.other;
-            return `<button class="chaika-group-event" data-group-event="${event.id}" type="button"><div class="event-type-icon" ${catStyle(event.category)}>${svgIcon(cat.icon)}</div><div>${event.promoted ? '<span class="badge">ПРЕМИУМ</span>' : ''}<h4>${escapeHtml(event.title)}</h4><p>${formatDate(event)} · ${event.price ? event.price + ' ₽' : 'Бесплатно'}<br>${escapeHtml(event.venue)}</p></div><span class="chaika-group-chevron">›</span></button>`;
+            return `<button class="chaika-group-event" data-group-event="${event.id}" type="button"><div class="event-type-icon" ${catStyle(event.category)}>${svgIcon(cat.icon)}</div><div>${event.promoted ? '<span class="badge">ПРЕМИУМ</span>' : ''}<h4>${escapeHtml(event.title)}</h4><p>${eventListMeta(event)}</p></div><span class="chaika-group-chevron">›</span></button>`;
           }).join('')}
         </div>
       </div>`;
