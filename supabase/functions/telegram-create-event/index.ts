@@ -10,17 +10,19 @@ function eq(a:string,b:string){if(a.length!==b.length)return false;let d=0;for(l
 async function verify(raw:string){const token=Deno.env.get("TELEGRAM_BOT_TOKEN");if(!token)throw new Error("bot_not_configured");const p=new URLSearchParams(raw),hash=(p.get("hash")||"").toLowerCase();const auth=Number(p.get("auth_date")||0),now=Math.floor(Date.now()/1000);if(!hash)throw new Error("hash_missing");if(!auth||auth>now+300||now-auth>86400)throw new Error("init_data_expired");const chk=(drop=false)=>[...p.entries()].filter(([k])=>k!=="hash"&&(!drop||k!=="signature")).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${k}=${v}`).join("\n");const secret=await mac(enc.encode("WebAppData"),token);let ok=eq(hx(await mac(secret,chk(false))),hash);if(!ok&&p.has("signature"))ok=eq(hx(await mac(secret,chk(true))),hash);if(!ok)throw new Error("signature_invalid");const u=JSON.parse(p.get("user")||"null");if(!u?.id)throw new Error("user_missing");return u;}
 
 const cats=new Set(['guitar','music','mic','drink','chess','chat','coffee','game','art','walk','sport','dog','study','dating','party','other']);
-const latinToCyr:Record<string,string>={a:'а',c:'с',e:'е',o:'о',p:'р',x:'х',y:'у',k:'к',m:'м',t:'т',h:'н',b:'в'};
+const latinToCyr:Record<string,string>={a:'а',b:'в',c:'с',d:'д',e:'е',f:'ф',g:'г',h:'х',i:'и',j:'й',k:'к',l:'л',m:'м',n:'н',o:'о',p:'р',q:'к',r:'р',s:'с',t:'т',u:'у',v:'в',w:'ш',x:'х',y:'у',z:'з'};
 const cyrToLatin:Record<string,string>={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',и:'i',й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const greekToCyr:Record<string,string>={α:'а',β:'в',ε:'е',ι:'и',κ:'к',ν:'н',ο:'о',ρ:'р',σ:'с',ς:'с',τ:'т',υ:'у',χ:'х'};
+const greekToLatin:Record<string,string>={α:'a',β:'b',ε:'e',ι:'i',κ:'k',ν:'n',ο:'o',ρ:'r',σ:'s',ς:'s',τ:'t',υ:'u',χ:'h'};
+const symbolToCyr:Record<string,string>={'@':'а','₽':'р','0':'о','1':'и','3':'з','4':'ч','6':'б','8':'в','$':'с','€':'е'};
+const symbolToLatin:Record<string,string>={'@':'a','₽':'r','0':'o','1':'i','3':'e','4':'a','6':'b','8':'b','$':'s','€':'e'};
 function cleaned(raw:string){return String(raw||'').normalize('NFKC').toLowerCase().replace(/ё/g,'е').replace(/[\u200B-\u200D\uFEFF]/g,'');}
 function splitCompact(s:string){const spaced=s.replace(/[^a-zа-я0-9]+/giu,' ').replace(/\s+/g,' ').trim();return {spaced,compact:spaced.replace(/\s+/g,'')};}
 function norm(raw:string){
   const src=cleaned(raw);
-  const cyrLeet=src.replace(/[0346@$]/g,ch=>({'0':'о','3':'з','4':'ч','6':'б','@':'а','$':'с'}[ch]||ch));
-  const cyrMixed=cyrLeet.replace(/[aceopxykmthb]/g,ch=>latinToCyr[ch]||ch);
+  const cyrMixed=[...src].map(ch=>symbolToCyr[ch]??latinToCyr[ch]??greekToCyr[ch]??ch).join('');
   const cyr=splitCompact(cyrMixed);
-  const latLeet=src.replace(/[0134@$]/g,ch=>({'0':'o','1':'i','3':'e','4':'a','@':'a','$':'s'}[ch]||ch));
-  const latMixed=[...latLeet].map(ch=>cyrToLatin[ch]??ch).join('');
+  const latMixed=[...src].map(ch=>symbolToLatin[ch]??cyrToLatin[ch]??greekToLatin[ch]??ch).join('');
   const lat=splitCompact(latMixed);
   return {spaced:cyr.spaced,compact:cyr.compact,latinSpaced:lat.spaced,latinCompact:lat.compact};
 }
@@ -28,8 +30,11 @@ function hasAny(v:string,terms:string[]){return terms.some(t=>v.includes(t));}
 function anyPattern(values:string[],patterns:RegExp[]){return patterns.some(r=>values.some(v=>r.test(v)));}
 function localModeration(raw:string){
   const f=norm(raw);
-  const hardRu=['наркот','закладк','кладмен','героин','кокаин','амфетамин','метамфетамин','мефедрон','марихуан','каннабис','экстази','псилоциб','оружи','боеприпас','взрывчат','террор','экстрем','проституц','интимуслуг','сексзаденьги','массовоеубий','массовыйрасстрел','жертвопринош','человеческаяжертв','ритуальноеубий','изнасил','сексуальноенасили','самоубий','суицид','живодер'];
-  const hardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape','prostitution'];
+  const sexualServicesRu=['проститут','проституц','интимуслуг','сексуслуг','сексзаденьги','эскортуслуг','досугдевуш','девушканачас'];
+  const sexualServicesLat=['prostitut','intimuslug','sexuslug','sexservice','escortservice','dosugdevush'];
+  if(hasAny(f.compact,sexualServicesRu)||hasAny(f.latinCompact,sexualServicesLat))return {status:'block',reason:'sexual_services'} as const;
+  const hardRu=['наркот','закладк','кладмен','героин','кокаин','амфетамин','метамфетамин','мефедрон','марихуан','каннабис','экстази','псилоциб','оружи','боеприпас','взрывчат','террор','экстрем','массовоеубий','массовыйрасстрел','жертвопринош','человеческаяжертв','ритуальноеубий','изнасил','сексуальноенасили','самоубий','суицид','живодер'];
+  const hardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape'];
   const hardPatterns=[/массов\S*\s+(убий|расстрел|резн)/u,/убить\s+(люд|человек|кого|всех)/u,/(расстрел|резн[яи]|пытк|казн[ьи]|линч)/u,/(убить|мучить|издев\S*)\s+(кот|кош|собак|живот)/u,/(прыгн\S*\s+с\s+(крыши|моста)|вскрыть\s+вен)/u,/(юз\S*|поюз\S*)\s+(кот|кош|котик)/u,/(упорот|вмаз|ширнут|снюх|под\s+веществ)/u,/(дорожк\S*\s+(кокс|кокаин)|колоть\s+(героин|наркот))/u,/(сексуал\S*|секс)\s+.*(дет|ребен|подрост|несовершеннолет)/u,/mass\w*\s+(kill|shoot|murder)/i,/kill\s+(people|everyone|person)/i,/self\s*harm|suicid/i];
   if(hasAny(f.compact,hardRu)||hasAny(f.latinCompact,hardLat)||anyPattern([f.spaced,f.latinSpaced],hardPatterns))return {status:'block',reason:'dangerous_or_illegal'} as const;
 

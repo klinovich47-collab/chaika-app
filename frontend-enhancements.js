@@ -235,12 +235,28 @@ toggleGoing=async function(id){
   }catch(error){console.error('CHAIKA attendance',error);toast('Не удалось обновить «Пойду»')}
 };
 
-const chaikaDangerBlockPatterns=[/наркот|закладк|героин|кокаин|амфетамин|мефедрон|метамфетамин/i,/оружи|боеприпас|взрывчат|бомб[ау]|террор|экстрем/i,/массов\w*\s+(убий|расстрел|резн)|массовое\s+убийство/i,/убийств|убить\s+(люд|человек|кого|всех)|расстрел|резн[яи]|пытк|казн[ьи]|линч/i,/жертвопринош|человеческ\w*\s+жертв|ритуальн\w*\s+убий/i,/изнасил|сексуальн\w*\s+насили/i,/самоубий|суицид|прыгн\w*\s+с\s+(крыши|моста)|вскрыть\s+вен/i,/убить\s+(кот|кош|собак|живот)|мучить\s+(кот|кош|собак|живот)|издев\w*\s+над\s+(кот|кош|собак|живот)|живодер/i,/проституц|купить\s+паспорт|продам\s+паспорт/i];
-const chaikaReviewPatterns=[/\b(хуй|хуя|хуе|пизд|ебан|ёбан|ебат|бляд)\w*/i,/без\s+правил|секретн\w*\s+адрес|только\s+налич|100%\s+заработ|л[её]гк\w*\s+деньг/i,/по\s+приколу|рофл|прикол\w*\s+событ|поюзат\w*\s+(кот|кош|живот)/i,/драка|подраться|мордобой|охот\w*\s+на\s+люд/i,/кровав\w*\s+(вечерин|ритуал)|сатанин\w*\s+ритуал/i];
+const chaikaLatinToCyr={a:'а',b:'в',c:'с',d:'д',e:'е',f:'ф',g:'г',h:'х',i:'и',j:'й',k:'к',l:'л',m:'м',n:'н',o:'о',p:'р',q:'к',r:'р',s:'с',t:'т',u:'у',v:'в',w:'ш',x:'х',y:'у',z:'з'};
+const chaikaCyrToLatin={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',и:'i',й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const chaikaGreekToCyr={α:'а',β:'в',ε:'е',ι:'и',κ:'к',ν:'н',ο:'о',ρ:'р',σ:'с',ς:'с',τ:'т',υ:'у',χ:'х'};
+const chaikaGreekToLatin={α:'a',β:'b',ε:'e',ι:'i',κ:'k',ν:'n',ο:'o',ρ:'r',σ:'s',ς:'s',τ:'t',υ:'u',χ:'h'};
+const chaikaSymbolToCyr={'@':'а','₽':'р','0':'о','1':'и','3':'з','4':'ч','6':'б','8':'в','$':'с','€':'е'};
+const chaikaSymbolToLatin={'@':'a','₽':'r','0':'o','1':'i','3':'e','4':'a','6':'b','8':'b','$':'s','€':'e'};
+function chaikaModerationForms(value){
+  const src=String(value||'').normalize('NFKC').toLowerCase().replace(/ё/g,'е').replace(/[\u200B-\u200D\uFEFF]/g,'');
+  const split=v=>{const spaced=v.replace(/[^a-zа-я0-9]+/giu,' ').replace(/\s+/g,' ').trim();return {spaced,compact:spaced.replace(/\s+/g,'')}};
+  const cyr=split([...src].map(ch=>chaikaSymbolToCyr[ch]??chaikaLatinToCyr[ch]??chaikaGreekToCyr[ch]??ch).join(''));
+  const latin=split([...src].map(ch=>chaikaSymbolToLatin[ch]??chaikaCyrToLatin[ch]??chaikaGreekToLatin[ch]??ch).join(''));
+  return {cyrSpaced:cyr.spaced,cyrCompact:cyr.compact,latinSpaced:latin.spaced,latinCompact:latin.compact};
+}
+const chaikaSexualServiceTermsRu=['проститут','проституц','интимуслуг','сексуслуг','сексзаденьги','эскортуслуг','досугдевуш','девушканачас'];
+const chaikaSexualServiceTermsLat=['prostitut','intimuslug','sexuslug','sexservice','escortservice','dosugdevush'];
+const chaikaDangerBlockPatterns=[/наркот|закладк|героин|кокаин|амфетамин|мефедрон|метамфетамин/i,/оружи|боеприпас|взрывчат|бомб[ау]|террор|экстрем/i,/массов\S*\s+(убий|расстрел|резн)|массовое\s+убийство/i,/убийств|убить\s+(люд|человек|кого|всех)|расстрел|резн[яи]|пытк|казн[ьи]|линч/i,/жертвопринош|человеческ\S*\s+жертв|ритуальн\S*\s+убий/i,/изнасил|сексуальн\S*\s+насили/i,/самоубий|суицид|прыгн\S*\s+с\s+(крыши|моста)|вскрыть\s+вен/i,/убить\s+(кот|кош|собак|живот)|мучить\s+(кот|кош|собак|живот)|издев\S*\s+над\s+(кот|кош|собак|живот)|живодер/i,/купить\s+паспорт|продам\s+паспорт/i];
+const chaikaReviewPatterns=[/\b(хуй|хуя|хуе|пизд|ебан|ебат|бляд)\S*/i,/без\s+правил|секретн\S*\s+адрес|только\s+налич|100%\s+заработ|легк\S*\s+деньг/i,/по\s+приколу|рофл|прикол\S*\s+событ|поюзат\S*\s+(кот|кош|живот)/i,/драка|подраться|мордобой|охот\S*\s+на\s+люд/i,/кровав\S*\s+(вечерин|ритуал)|сатанин\S*\s+ритуал/i];
 moderate=function(text){
-  const normalized=String(text||'').replace(/ё/g,'е');
-  if(chaikaDangerBlockPatterns.some(r=>r.test(normalized)))return {status:'block',title:'Публикация отклонена',text:'Обнаружено опасное, насильственное или незаконное содержание. Такое событие нельзя публиковать.'};
-  if(chaikaReviewPatterns.some(r=>r.test(normalized)))return {status:'review',title:'Нужна ручная проверка',text:'Формулировка выглядит сомнительно или провокационно. Событие будет проверено модератором.'};
+  const f=chaikaModerationForms(text),values=[f.cyrSpaced,f.latinSpaced];
+  const sexualServices=chaikaSexualServiceTermsRu.some(term=>f.cyrCompact.includes(term))||chaikaSexualServiceTermsLat.some(term=>f.latinCompact.includes(term));
+  if(sexualServices||chaikaDangerBlockPatterns.some(r=>values.some(value=>r.test(value))))return {status:'block',title:'Публикация отклонена',text:'Обнаружено опасное, насильственное или незаконное содержание. Такое событие нельзя публиковать.'};
+  if(chaikaReviewPatterns.some(r=>values.some(value=>r.test(value))))return {status:'review',title:'Нужна ручная проверка',text:'Формулировка выглядит сомнительно или провокационно. Событие будет проверено модератором.'};
   return {status:'ok',title:'Проверка пройдена',text:'Событие прошло предварительную проверку.'};
 };
 
