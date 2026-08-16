@@ -46,7 +46,16 @@ Deno.serve(async req=>{
     if(action==='dashboard'){
       const {data:mine,error:me}=await db.from('events').select(fields).eq('telegram_owner_id',uid).order('created_at',{ascending:false}).limit(100);if(me)throw me;
       let moderation:any[]=[];
-      if(canModerate){const {data,error}=await db.from('events').select(fields).or('source.is.null,moderation_status.eq.review').order('created_at',{ascending:false}).limit(200);if(error)throw error;moderation=data||[];}
+      if(canModerate){
+        const {data,error}=await db.from('events').select(fields).or('source.is.null,moderation_status.eq.review').order('created_at',{ascending:false}).limit(200);if(error)throw error;
+        moderation=data||[];
+        const ownerIds=[...new Set(moderation.map((event:any)=>Number(event.telegram_owner_id)).filter((id:number)=>Number.isFinite(id)&&id>0))];
+        if(ownerIds.length){
+          const {data:owners,error:ownersError}=await db.from('telegram_users').select('telegram_user_id,username,first_name,last_name').in('telegram_user_id',ownerIds);if(ownersError)throw ownersError;
+          const byId=new Map((owners||[]).map((owner:any)=>[Number(owner.telegram_user_id),owner]));
+          moderation=moderation.map((event:any)=>{const owner=byId.get(Number(event.telegram_owner_id));return {...event,creator_username:owner?.username||null,creator_name:[owner?.first_name,owner?.last_name].filter(Boolean).join(' ')||event.organizer_name||'Пользователь'};});
+        }
+      }
       return reply({ok:true,is_admin:isAdmin,is_moderator:isModerator,can_moderate:canModerate,my_events:mine||[],moderation});
     }
 
@@ -87,6 +96,7 @@ Deno.serve(async req=>{
     }
     if(action==='moderate'){
       if(!canModerate)return reply({ok:false,error:'forbidden'},403);
+      if(!isAdmin&&Number(event.telegram_owner_id)===uid)return reply({ok:false,error:'self_moderation_forbidden'},403);
       const decision=String(body.decision||'');if(!['published','rejected'].includes(decision))throw new Error('invalid_decision');
       const at=new Date().toISOString(),role=isAdmin?'admin':'moderator',metadata={...(event.moderation_metadata||{}),reviewer:{telegram_user_id:uid,role,decision,at}};
       const {error}=await db.from('events').update({moderation_status:decision,moderation_reason:`${role}_${decision}`,moderation_metadata:metadata,moderated_at:at,updated_at:at}).eq('id',eventId);if(error)throw error;

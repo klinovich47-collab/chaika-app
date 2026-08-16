@@ -121,7 +121,7 @@
           </div>
           <p class="helper">Если выбранное время уже прошло, событие начнётся завтра. Максимальная длительность — 24 часа.</p>
 
-          <label>Описание<textarea name="description" rows="4" maxlength="500" placeholder="Что происходит и кого ждёшь"></textarea></label>
+          <label>Описание<textarea name="description" rows="4" minlength="12" maxlength="500" required placeholder="Что будет происходить и кого ты ждёшь"></textarea></label>
 
           <div class="chaika-location-field">
             <div class="field-label">Точка на карте</div>
@@ -145,7 +145,7 @@
       <section id="profileView" class="view scroll-view">
         <div class="profile-card"><div id="avatar" class="avatar">И</div><div><h2 id="profileName">Илья</h2><p id="profileUsername" class="muted">Telegram Mini App</p></div></div>
         <div class="stats-grid"><div><strong id="goingStat">0</strong><span>иду</span></div><div><strong id="createdStat">0</strong><span>создано</span></div><div><strong id="refStat">0</strong><span>рефералов</span></div></div>
-        <div class="moderation-card"><h3>Модерация</h3><p>Новые пользовательские события проходят автоматическую проверку. Пограничные — ручную.</p><div class="status-line"><span class="status-dot ok"></span>Безопасно — публикуется</div><div class="status-line"><span class="status-dot review"></span>Сомнительно — на проверку</div><div class="status-line"><span class="status-dot block"></span>Явное нарушение — отклоняется</div></div>
+        <div class="moderation-card"><h3>Модерация</h3><p>Каждое событие от пользователя скрыто до ручной проверки названия и описания.</p><div class="status-line"><span class="status-dot review"></span>Отправлено — ждёт решения модератора</div><div class="status-line"><span class="status-dot ok"></span>Одобрено — появляется на карте</div><div class="status-line"><span class="status-dot block"></span>Нарушение — отклоняется</div></div>
         <button id="resetBtn" class="secondary-btn">Сбросить локальные данные</button>
       </section>
     </main>

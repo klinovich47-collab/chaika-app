@@ -19,6 +19,19 @@
     return base.toISOString().slice(0, 10);
   }
 
+  function dayWindow(dateString) {
+    const start = new Date(`${dateString}T00:00:00+03:00`).getTime();
+    return { start, end: start + 24 * 60 * 60 * 1000 };
+  }
+
+  function externalLongRange(event) {
+    const start = typeof eventStartsAt === 'function' ? eventStartsAt(event) : new Date(event?.startsAt || event?.date).getTime();
+    const end = typeof eventExpiresAt === 'function' ? eventExpiresAt(event) : Number(event?.expiresAt || 0);
+    return event?.source && Number.isFinite(start) && Number.isFinite(end) && end - start > 24 * 60 * 60 * 1000
+      ? { start, end }
+      : null;
+  }
+
   // Keep all event day buckets tied to Saint Petersburg/Moscow calendar dates,
   // regardless of the phone's current timezone.
   try {
@@ -35,11 +48,29 @@
       if (state.time === 'now') {
         return event?.type === 'instant' && startsAt <= now;
       }
+      const longRange = externalLongRange(event);
+      if (longRange) {
+        const lastOffset = state.time === 'tomorrow' ? 1 : state.time === 'week' ? 7 : state.time === 'month' ? 30 : 0;
+        const firstDate = state.time === 'tomorrow' ? addCalendarDays(today, 1) : today;
+        const first = dayWindow(firstDate);
+        const rangeEnd = dayWindow(addCalendarDays(today, lastOffset)).end;
+        return longRange.start < rangeEnd && longRange.end > first.start;
+      }
       if (state.time === 'today') return eventDate === today;
       if (state.time === 'tomorrow') return eventDate === addCalendarDays(today, 1);
       if (state.time === 'week') return eventDate >= today && eventDate <= addCalendarDays(today, 7);
       if (state.time === 'month') return eventDate >= today && eventDate <= addCalendarDays(today, 30);
       return true;
+    };
+  } catch (_) {}
+
+  try {
+    const previousFormatDate = formatDate;
+    formatDate = function(event) {
+      const range = externalLongRange(event);
+      if (!range) return previousFormatDate(event);
+      const until = new Intl.DateTimeFormat('ru-RU', { timeZone: APP_TZ, day:'numeric', month:'long' }).format(new Date(range.end));
+      return `До ${until}`;
     };
   } catch (_) {}
 

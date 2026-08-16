@@ -33,16 +33,22 @@ function localModeration(raw:string){
   const sexualServicesRu=['проститут','проституц','интимуслуг','сексуслуг','сексзаденьги','эскортуслуг','досугдевуш','девушканачас'];
   const sexualServicesLat=['prostitut','intimuslug','sexuslug','sexservice','escortservice','dosugdevush'];
   if(hasAny(f.compact,sexualServicesRu)||hasAny(f.latinCompact,sexualServicesLat))return {status:'block',reason:'sexual_services'} as const;
-  const hardRu=['наркот','закладк','кладмен','героин','кокаин','амфетамин','метамфетамин','мефедрон','марихуан','каннабис','экстази','псилоциб','оружи','боеприпас','взрывчат','террор','экстрем','массовоеубий','массовыйрасстрел','жертвопринош','человеческаяжертв','ритуальноеубий','изнасил','сексуальноенасили','самоубий','суицид','живодер'];
+  const hardRu=['наркот','закладк','кладмен','героин','кокаин','амфетамин','метамфетамин','мефедрон','марихуан','каннабис','экстази','псилоциб','оружи','боеприпас','взрывчат','террор','экстрем','массовоеубий','массовыйрасстрел','жертвопринош','человеческаяжертв','ритуальноеубий','изнасил','сексуальноенасили','самоубий','суицид','живодер','куклуксклан','майнкампф','детскоепорно'];
   const hardLat=['narkot','zaklad','heroin','cocaine','kokain','amphetamine','amfetamin','methamphetamine','metamfetamin','mefedron','marijuana','marihuana','cannabis','kanabis','ecstasy','mdma','lsd','psilocybin','weapon','explosive','terror','suicide','rape'];
-  const hardPatterns=[/массов\S*\s+(убий|расстрел|резн)/u,/убить\s+(люд|человек|кого|всех)/u,/(расстрел|резн[яи]|пытк|казн[ьи]|линч)/u,/(убить|мучить|издев\S*)\s+(кот|кош|собак|живот)/u,/(прыгн\S*\s+с\s+(крыши|моста)|вскрыть\s+вен)/u,/(юз\S*|поюз\S*)\s+(кот|кош|котик)/u,/(упорот|вмаз|ширнут|снюх|под\s+веществ)/u,/(дорожк\S*\s+(кокс|кокаин)|колоть\s+(героин|наркот))/u,/(сексуал\S*|секс)\s+.*(дет|ребен|подрост|несовершеннолет)/u,/mass\w*\s+(kill|shoot|murder)/i,/kill\s+(people|everyone|person)/i,/self\s*harm|suicid/i];
+  const hardPatterns=[/массов\S*\s+(убий|расстрел|резн)/u,/убить\s+(люд|человек|кого|всех)/u,/(расстрел|резн[яи]|пытк|казн[ьи]|линч)/u,/(убить|мучить|издев\S*)\s+(кот|кош|собак|живот)/u,/(прыгн\S*\s+с\s+(крыши|моста)|вскрыть\s+вен)/u,/(юз\S*|поюз\S*)\s+(кот|кош|котик)/u,/(упорот|вмаз|ширнут|снюх|под\s+веществ)/u,/(дорожк\S*\s+(кокс|кокаин)|колоть\s+(героин|наркот))/u,/(сексуал\S*|секс)\s+.*(дет|ребен|подрост|несовершеннолет)/u,/\bцп\b/u,/(ку\s*клукс?|куклус)\s*клан/u,/майн\s*кампф|австрийск\S*\s+художник/u,/(россия\s+для\s+русских|только\s+для\s+русских)/u,/(принос\S*|принес\S*)\s+жертв/u,/mass\w*\s+(kill|shoot|murder)/i,/kill\s+(people|everyone|person)/i,/self\s*harm|suicid/i];
   if(hasAny(f.compact,hardRu)||hasAny(f.latinCompact,hardLat)||anyPattern([f.spaced,f.latinSpaced],hardPatterns))return {status:'block',reason:'dangerous_or_illegal'} as const;
 
-  const reviewRu=['хуй','хуя','хуе','хер','пизд','пиздец','ебан','ебат','ебля','ебуч','ебнут','уеб','заеб','наеб','поеб','выеб','бляд','шлюх','манда','елда','залуп','фаллос','фалос','пенис','писюн','письк','вагин','вареник','сперм','конч','дроч','отсос','минет','куни','порно','оргия','сиськ','титьк','жоп','анус','секс','анал','член','шмаль','гашиш','травка','косяк','спиды','скорость','кислота','таблы','колеса','кокс','эскорт','драка','подраться','мордобой','охотаналюд','кровавыйритуал','сатанинскийритуал','безправил','секретныйадрес','тольконалич','легкиеденьги','100заработ'];
+  const reviewRu=['хуй','хуя','хуе','хер','пизд','пиздец','ебан','ебат','ебля','ебуч','ебнут','уеб','заеб','наеб','поеб','выеб','бляд','шлюх','манда','елда','залуп','фаллос','фалос','пенис','писюн','письк','вагин','вареник','сперм','конч','дроч','отсос','минет','куни','порно','оргия','сиськ','титьк','жоп','анус','секс','анал','член','эротич','маньяк','какаш','фекал','дерьм','говн','нацист','свастик','гитлер','шмаль','гашиш','травка','косяк','спиды','скорость','кислота','таблы','колеса','кокс','эскорт','драка','подраться','мордобой','охотаналюд','кровавыйритуал','сатанинскийритуал','безправил','секретныйадрес','тольконалич','легкиеденьги','100заработ'];
   const reviewLat=['hui','huy','khui','pizda','pizdec','pizdets','ebat','eblya','blyad','blyat','chlen','zalupa','falloc','fallos','penis','vagina','dick','cock','pussy','blowjob','porn','porno','fuck','sex','anal','escort','hashish','gashish','weed'];
   const reviewPatterns=[/(по\s+приколу|рофл|прикол\S*\s+событ)/u,/(кур\S*|забить|пыхн\S*)\s+.*(шмаль|трав|косяк|гаш)/u,/(поюз\S*|юз\S*)\s+.*(веществ|табл|колес|скорост)/u,/\b(fuck|blowjob|pussy|cock|dick|porn)\w*/i];
   if(hasAny(f.compact,reviewRu)||hasAny(f.latinCompact,reviewLat)||anyPattern([f.spaced,f.latinSpaced],reviewPatterns))return {status:'review',reason:'slang_or_ambiguous'} as const;
   return {status:'published',reason:'local_rules_clean'} as const;
+}
+
+type LocalDecision=ReturnType<typeof localModeration>;
+function strictestLocal(fields:Record<string,LocalDecision>){
+  const rank={published:0,review:1,block:2};
+  return Object.values(fields).reduce((strictest,current)=>rank[current.status]>rank[strictest.status]?current:strictest);
 }
 
 async function resolveOpenAIKey(){
@@ -83,20 +89,34 @@ Deno.serve(async(req)=>{
   try{
     const body=await req.json(),u=await verify(String(body.initData||'')),e=body.event||{};
     const title=String(e.title||'').trim(),category=String(e.category||''),type=String(e.event_type||'instant'),venue='Точка на карте',description=String(e.description||'').trim();
-    if(title.length<3||title.length>70)throw new Error('invalid_title');if(!cats.has(category))throw new Error('invalid_category');if(type!=='instant')throw new Error('invalid_event_type');if(description.length>500)throw new Error('description_too_long');
+    if(title.length<3||title.length>70)throw new Error('invalid_title');if(!cats.has(category))throw new Error('invalid_category');if(type!=='instant')throw new Error('invalid_event_type');if(description.length<12)throw new Error('description_too_short');if(description.length>500)throw new Error('description_too_long');
     const nowMs=Date.now(),starts=new Date(e.starts_at);if(Number.isNaN(starts.getTime())||starts.getTime()<nowMs-5*60000||starts.getTime()>nowMs+24*3600000+10*60000)throw new Error('invalid_start_time');const x=new Date(e.expires_at),durationMs=x.getTime()-starts.getTime();if(Number.isNaN(x.getTime())||x.getTime()<=nowMs||durationMs<15*60000||durationMs>24*3600000)throw new Error('invalid_expiry');const expires=x.toISOString();
     const latRaw=String(e.lat??'').trim(),lngRaw=String(e.lng??'').trim(),lat=Number(latRaw),lng=Number(lngRaw);if(!latRaw||!lngRaw||!Number.isFinite(lat)||!Number.isFinite(lng)||lat<-90||lat>90||lng<-180||lng>180)throw new Error('invalid_coordinates');
     const price=0,age=0,image='';if(String(e.image_url||'').trim())throw new Error('image_not_allowed');const ticketUrl=String(e.ticket_url||'').trim();if(ticketUrl.length>500||ticketUrl&&!/^https?:\/\//i.test(ticketUrl))throw new Error('invalid_ticket_url');
 
-    const allText=`Название: ${title}\nОписание: ${description}\nСсылка: ${ticketUrl}`;const local=localModeration(allText);if(local.status==='block')throw new Error('event_blocked');
-    const ai=await aiModeration(allText,image);if(ai.severe)throw new Error('event_blocked');
-    let mod:'published'|'review'=local.status==='review'?'review':'published';let reason=local.reason;if(ai.flagged){mod='review';reason=ai.reason||'ai_flagged'}if(image&&(!ai.available||ai.error)){mod='review';reason='image_requires_manual_review'}
-    const metadata={local:{status:local.status,reason:local.reason},ai:{available:Boolean(ai.available),flagged:Boolean(ai.flagged),severe:Boolean(ai.severe),reason:ai.reason||null,model:(ai as any).model||null,categories:(ai as any).categories||null,scores:(ai as any).scores||null},has_image:Boolean(image)};
-
     const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}}),now=new Date().toISOString();
-    const profile={telegram_user_id:Number(u.id),username:u.username||null,first_name:u.first_name||'',last_name:u.last_name||null,language_code:u.language_code||null,photo_url:u.photo_url||null,is_premium:Boolean(u.is_premium),allows_write_to_pm:u.allows_write_to_pm??null,updated_at:now,last_auth_at:now};const {error:ue}=await db.from('telegram_users').upsert(profile,{onConflict:'telegram_user_id'});if(ue)throw ue;
-    const row={title,category,event_type:type,starts_at:starts.toISOString(),expires_at:expires,price_rub:price,venue,lat,lng,age_limit:age,description,ticket_url:ticketUrl||null,image_url:image||null,organizer_name:String(u.first_name||'Пользователь').slice(0,80),telegram_owner_id:Number(u.id),promoted:false,moderation_status:mod,moderation_reason:reason,moderation_metadata:metadata,moderated_at:now,going_count:0};
+    const uid=Number(u.id),profile={telegram_user_id:uid,username:u.username||null,first_name:u.first_name||'',last_name:u.last_name||null,language_code:u.language_code||null,photo_url:u.photo_url||null,is_premium:Boolean(u.is_premium),allows_write_to_pm:u.allows_write_to_pm??null,updated_at:now,last_auth_at:now};const {error:ue}=await db.from('telegram_users').upsert(profile,{onConflict:'telegram_user_id'});if(ue)throw ue;
+    const {data:role,error:roleError}=await db.from('telegram_users').select('is_admin').eq('telegram_user_id',uid).maybeSingle();if(roleError)throw roleError;
+    if(!role?.is_admin){
+      const hourAgo=new Date(Date.now()-3600000).toISOString();
+      const [{count:recentCount,error:recentError},{count:activeCount,error:activeError}]=await Promise.all([
+        db.from('events').select('id',{count:'exact',head:true}).eq('telegram_owner_id',uid).gte('created_at',hourAgo),
+        db.from('events').select('id',{count:'exact',head:true}).eq('telegram_owner_id',uid).in('moderation_status',['review','published']).gt('expires_at',now)
+      ]);
+      if(recentError)throw recentError;if(activeError)throw activeError;
+      if((recentCount||0)>=5)throw new Error('event_rate_limit');
+      if((activeCount||0)>=3)throw new Error('active_event_limit');
+    }
+
+    const localFields={title:localModeration(title),description:localModeration(description),link:localModeration(ticketUrl)};const local=strictestLocal(localFields);if(local.status==='block')throw new Error('event_blocked');
+    const allText=`Название: ${title}\nОписание: ${description}\nСсылка: ${ticketUrl}`;
+    const ai=await aiModeration(allText,image);if(ai.severe)throw new Error('event_blocked');
+    const mod:'review'='review';
+    const reason=ai.flagged?(ai.reason||'ai_flagged'):(!ai.available||ai.error)?'automated_moderation_unavailable':local.status==='review'?local.reason:'manual_review_required';
+    const metadata={local:{status:local.status,reason:local.reason,fields:localFields},ai:{available:Boolean(ai.available),flagged:Boolean(ai.flagged),severe:Boolean(ai.severe),error:Boolean((ai as any).error),reason:ai.reason||null,model:(ai as any).model||null,categories:(ai as any).categories||null,scores:(ai as any).scores||null},manual_review_required:true,has_image:Boolean(image)};
+
+    const row={title,category,event_type:type,starts_at:starts.toISOString(),expires_at:expires,price_rub:price,venue,lat,lng,age_limit:age,description,ticket_url:ticketUrl||null,image_url:image||null,organizer_name:String(u.first_name||'Пользователь').slice(0,80),telegram_owner_id:uid,promoted:false,moderation_status:mod,moderation_reason:reason,moderation_metadata:metadata,moderated_at:null,going_count:0};
     const {data,error}=await db.from('events').insert(row).select('id,moderation_status,moderation_reason').single();if(error)throw error;
-    return out({ok:true,...data,moderation_engine:ai.available?'rules+openai-omni':'rules+manual-image-review'});
+    return out({ok:true,...data,moderation_engine:ai.available&&!ai.error?'rules+openai-omni+manual':'rules+manual'});
   }catch(err){const m=err instanceof Error?err.message:'create_failed';const status=m==='bot_not_configured'?503:(m.includes('signature')||m.includes('init_data')||m.includes('user_')||m==='hash_missing'?401:400);return out({ok:false,error:m},status);}
 });
