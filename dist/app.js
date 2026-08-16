@@ -781,6 +781,11 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
     let suppressClick = false;
     let previewMarker = null;
     let pendingLatLng = null;
+    let lastTap = null;
+
+    // Leaflet's native double-tap handling is inconsistent inside iOS Telegram
+    // WebViews. Use one pointer-based gesture for touch and mouse instead.
+    map.doubleClickZoom?.disable?.();
 
     const clearTimer = () => {
       if (timer) clearTimeout(timer);
@@ -826,8 +831,11 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
 
     container.addEventListener('pointerdown', event => {
       if (event.button > 0) return;
-      if (event.target.closest('.leaflet-marker-icon,.leaflet-control,button,input,select,textarea')) return;
-      start = { x: event.clientX, y: event.clientY };
+      if (event.target.closest('.leaflet-marker-icon,.leaflet-control,button,input,select,textarea')) {
+        lastTap = null;
+        return;
+      }
+      start = { x: event.clientX, y: event.clientY, at: performance.now(), pointerId: event.pointerId };
       timer = setTimeout(() => {
         if (!start) return;
         const rect = container.getBoundingClientRect();
@@ -843,7 +851,28 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
       if (!start) return;
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 11) clearTimer();
     }, { passive: true });
-    container.addEventListener('pointerup', clearTimer, { passive: true });
+    container.addEventListener('pointerup', event => {
+      const tap = start && event.pointerId === start.pointerId && performance.now() - start.at < 300
+        ? { x: event.clientX, y: event.clientY, at: performance.now() }
+        : null;
+      clearTimer();
+      if (!tap) {
+        lastTap = null;
+        return;
+      }
+      const isDoubleTap = lastTap && tap.at - lastTap.at <= 340 && Math.hypot(tap.x - lastTap.x, tap.y - lastTap.y) <= 32;
+      if (!isDoubleTap) {
+        lastTap = tap;
+        return;
+      }
+      lastTap = null;
+      suppressClick = true;
+      const rect = container.getBoundingClientRect();
+      const point = L.point(tap.x - rect.left, tap.y - rect.top);
+      const nextZoom = Math.min(map.getZoom() + 1, map.getMaxZoom());
+      if (nextZoom > map.getZoom()) map.setZoomAround(point, nextZoom);
+      tg?.HapticFeedback?.impactOccurred?.('light');
+    }, { passive: true });
     container.addEventListener('pointercancel', clearTimer, { passive: true });
     container.addEventListener('pointerleave', clearTimer, { passive: true });
     container.addEventListener('click', event => {
