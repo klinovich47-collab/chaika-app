@@ -1,4 +1,4 @@
-/* CHAIKA Telegram header layout: keep content below native controls (rev22). */
+/* CHAIKA Telegram header layout: compact safe-area handling for sheet/fullscreen modes (rev23). */
 (() => {
   const tgApp = window.Telegram?.WebApp;
   const root = document.documentElement;
@@ -21,6 +21,21 @@
     return launchedInTelegram && (mobilePlatform || mobileDevice);
   }
 
+  function resolveHeaderTop(contentTop, safeTop) {
+    if (!isTelegramMobile()) return Math.max(contentTop, safeTop);
+
+    if (tgApp?.isFullscreen === true) {
+      const contentInsetMissing = contentTop <= safeTop + 8;
+      if (contentInsetMissing) return Math.max(safeTop + 36, 82);
+      return Math.min(Math.max(contentTop, safeTop), 96);
+    }
+
+    // In the regular rounded Telegram sheet the WebView itself is already
+    // shifted below the status bar. Large values here are screen-relative on
+    // some iOS builds, so applying them unbounded creates a second huge gap.
+    return Math.max(safeTop, Math.min(contentTop, 60));
+  }
+
   function syncTelegramInsets() {
     const contentTop = Math.max(
       pxNumber(tgApp?.contentSafeAreaInset?.top),
@@ -39,15 +54,8 @@
       cssInset('--tg-safe-area-inset-bottom')
     );
 
-    // Telegram iOS can report contentTop equal to safeTop while its native
-    // Close/menu controls still overlay the page. Reserve their control band
-    // only when the content-safe-area signal is clearly missing.
-    const needsNativeControlsFallback = isTelegramMobile() && contentTop <= safeTop + 8;
-
-    root.style.setProperty('--chaika-content-safe-top', `${Math.max(contentTop, safeTop)}px`);
+    root.style.setProperty('--chaika-content-safe-top', `${resolveHeaderTop(contentTop, safeTop)}px`);
     root.style.setProperty('--chaika-content-safe-bottom', `${Math.max(contentBottom, safeBottom)}px`);
-    root.style.setProperty('--chaika-native-controls-gap', needsNativeControlsFallback ? '44px' : '0px');
-    root.style.setProperty('--chaika-native-controls-min-top', needsNativeControlsFallback ? '84px' : '0px');
   }
 
   function removeDuplicateClose() {
@@ -60,8 +68,6 @@
     :root{
       --chaika-content-safe-top:0px;
       --chaika-content-safe-bottom:0px;
-      --chaika-native-controls-gap:0px;
-      --chaika-native-controls-min-top:0px;
     }
 
     /* Telegram owns the fullscreen header controls. Do not draw a second close button. */
@@ -71,13 +77,7 @@
     .topbar{
       position:relative!important;
       z-index:1100!important;
-      padding-top:calc(max(
-        var(--chaika-content-safe-top),
-        var(--tg-content-safe-area-inset-top, 0px),
-        calc(var(--tg-safe-area-inset-top, 0px) + var(--chaika-native-controls-gap)),
-        calc(env(safe-area-inset-top, 0px) + var(--chaika-native-controls-gap)),
-        var(--chaika-native-controls-min-top)
-      ) + 10px)!important;
+      padding-top:calc(max(var(--chaika-content-safe-top), env(safe-area-inset-top, 0px)) + 8px)!important;
       padding-right:16px!important;
       padding-bottom:10px!important;
       padding-left:16px!important;
