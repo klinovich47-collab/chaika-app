@@ -50,7 +50,10 @@
     const previousMarkers = Array.isArray(state?.markers) ? [...state.markers] : [];
 
     renderMap = function() {
-      const list = filteredEvents();
+      const baseList = filteredEvents();
+      const list = typeof window.chaikaFilterMapEvents === 'function'
+        ? window.chaikaFilterMapEvents(baseList)
+        : baseList;
       const groups = typeof chaikaGroupEvents === 'function' ? chaikaGroupEvents(list) : list.map(e => [e]);
       const nextLayer = L.layerGroup();
       const nextMarkers = [];
