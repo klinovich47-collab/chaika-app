@@ -48,7 +48,6 @@
       .chaika-group-sheet{display:flex!important;flex-direction:column;gap:0;max-height:min(68dvh,590px);min-height:0}
       .chaika-group-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 11px;background:rgba(255,255,255,.98);border-bottom:1px solid #eceee8}
       .chaika-group-head-main{min-width:0}.chaika-group-head h3{margin:0;color:#111315;font-size:17px}.chaika-group-head .muted{display:block;margin-top:3px;font-size:11px}
-      .chaika-group-close{flex:none;width:34px;height:34px;border:0;border-radius:50%;background:#eef0ea;color:#111315;font-size:22px;line-height:1;display:grid;place-items:center}
       .chaika-group-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:10px 10px calc(12px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;scrollbar-width:thin;scrollbar-color:#cdd1c7 transparent}
       .chaika-group-list::-webkit-scrollbar{width:5px}.chaika-group-list::-webkit-scrollbar-thumb{background:#cdd1c7;border-radius:999px}
       .chaika-group-event{background:#f8f9f6!important;color:#111315!important;border:1px solid #e2e5dd!important;border-radius:16px!important;box-shadow:none!important;touch-action:manipulation}
@@ -224,7 +223,6 @@
       <div class="chaika-group-sheet">
         <div class="chaika-group-head">
           <div class="chaika-group-head-main"><h3>${group.length} событий</h3><span class="muted">Премиум выше · листай список</span></div>
-          <button class="chaika-group-close" type="button" aria-label="Закрыть">×</button>
         </div>
         <div class="chaika-group-list">
           ${group.map(event => {
@@ -244,10 +242,6 @@
     L.DomEvent.disableClickPropagation(els.sheet);
     L.DomEvent.disableScrollPropagation(els.sheet);
 
-    els.sheet.querySelector('.chaika-group-close')?.addEventListener('click', () => {
-      els.sheet.classList.remove('chaika-group-open');
-      closeEventSheet();
-    });
     els.sheet.querySelectorAll('[data-group-event]').forEach(button => {
       button.addEventListener('click', () => {
         els.sheet.classList.remove('chaika-group-open');
