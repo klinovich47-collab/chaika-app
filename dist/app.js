@@ -176,7 +176,7 @@ chaikaSync();chaikaAuthenticate();
 
 
 /* CHAIKA frontend enhancements: map placement, grouped markers, ownership/admin management. */
-const chaikaManagement={isAdmin:false,myEvents:[],moderation:[],loading:false,error:null,lastLoadedAt:0};
+const chaikaManagement={isAdmin:false,isModerator:false,canModerate:false,myEvents:[],moderation:[],loading:false,error:null,lastLoadedAt:0};
 let chaikaPickingLocation=false;
 let chaikaPlacementMarker=null;
 
@@ -294,7 +294,7 @@ function chaikaEnsureManagementUI(){
   mine.innerHTML='<h3>Мои события</h3><p class="muted">Созданные с этого Telegram-профиля.</p><div id="chaikaMyEventsList" class="chaika-manage-list"></div>';
   const admin=document.createElement('section');
   admin.id='chaikaAdminSection';admin.className='chaika-profile-section chaika-admin-section hidden';
-  admin.innerHTML='<h3>Админ-модерация <span class="chaika-admin-badge">ADMIN</span></h3><p class="muted">Открыть, одобрить, отклонить или удалить событие.</p><div id="chaikaAdminEventsList" class="chaika-manage-list"></div>';
+  admin.innerHTML='<h3>Модерация <span id="chaikaModerationRoleBadge" class="chaika-admin-badge">MODERATOR</span></h3><p class="muted">Открыть, одобрить, отклонить или удалить событие.</p><div id="chaikaAdminEventsList" class="chaika-manage-list"></div>';
   profile.insertBefore(mine,moderationCard||$('resetBtn'));
   profile.insertBefore(admin,moderationCard||$('resetBtn'));
 }
@@ -311,8 +311,10 @@ function chaikaRenderManagementPanels(){
   else if(chaikaManagement.loading)mine.innerHTML='<div class="chaika-empty-manage">Загрузка…</div>';
   else if(chaikaManagement.error)mine.innerHTML='<div class="chaika-empty-manage">Не удалось загрузить управление событиями.</div>';
   else mine.innerHTML=chaikaManagement.myEvents.length?chaikaManagement.myEvents.map(row=>chaikaManagedEventCard(row,false)).join(''):'<div class="chaika-empty-manage">Ты пока не создавал событий.</div>';
-  adminSection?.classList.toggle('hidden',!chaikaManagement.isAdmin);
-  if(admin&&chaikaManagement.isAdmin){
+  adminSection?.classList.toggle('hidden',!chaikaManagement.canModerate);
+  const roleBadge=$('chaikaModerationRoleBadge');
+  if(roleBadge)roleBadge.textContent=chaikaManagement.isAdmin?'ADMIN':'MODERATOR';
+  if(admin&&chaikaManagement.canModerate){
     const rank={review:0,published:1,rejected:2};
     const sorted=[...chaikaManagement.moderation].sort((a,b)=>(rank[a.moderation_status]??3)-(rank[b.moderation_status]??3)||new Date(b.created_at)-new Date(a.created_at));
     admin.innerHTML=sorted.length?sorted.map(row=>chaikaManagedEventCard(row,true)).join(''):'<div class="chaika-empty-manage">Событий для модерации нет.</div>';
@@ -329,6 +331,8 @@ async function chaikaLoadManagement(showError=false){
   try{
     const data=await chaikaEdge('telegram-event-management',{initData,action:'dashboard'});
     chaikaManagement.isAdmin=Boolean(data.is_admin);
+    chaikaManagement.isModerator=Boolean(data.is_moderator);
+    chaikaManagement.canModerate=Boolean(data.can_moderate||data.is_admin||data.is_moderator);
     chaikaManagement.myEvents=data.my_events||[];
     chaikaManagement.moderation=data.moderation||[];
     chaikaManagement.lastLoadedAt=Date.now();
@@ -373,7 +377,7 @@ async function chaikaModerateManagedEvent(eventId,decision){
     await chaikaEdge('telegram-event-management',{initData:window.Telegram?.WebApp?.initData||'',action:'moderate',eventId,decision});
     toast(decision==='published'?'Событие одобрено':'Событие отклонено');
     await Promise.all([chaikaLoadEvents(false),chaikaLoadManagement(false)]);
-  }catch(error){console.error('CHAIKA moderate event',error);toast(error.message==='forbidden'?'Нужны права администратора':'Не удалось изменить статус')}
+  }catch(error){console.error('CHAIKA moderate event',error);toast(error.message==='forbidden'?'Нужны права модератора':'Не удалось изменить статус')}
 }
 
 const chaikaBaseUpdateProfile=updateProfile;
@@ -382,6 +386,7 @@ updateProfile=function(){
   const username=$('profileUsername'),created=$('createdStat');
   if(chaikaAuth.status==='ready'&&chaikaAuth.user){
     if(chaikaManagement.isAdmin&&!username.textContent.includes('админ'))username.textContent+=' · админ';
+    else if(chaikaManagement.isModerator&&!username.textContent.includes('модератор'))username.textContent+=' · модератор';
     if(chaikaManagement.lastLoadedAt)created.textContent=String(chaikaManagement.myEvents.length);
   }
   chaikaRenderManagementPanels();
@@ -1209,7 +1214,6 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
       .chaika-group-sheet{display:flex!important;flex-direction:column;gap:0;max-height:min(68dvh,590px);min-height:0}
       .chaika-group-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 11px;background:rgba(255,255,255,.98);border-bottom:1px solid #eceee8}
       .chaika-group-head-main{min-width:0}.chaika-group-head h3{margin:0;color:#111315;font-size:17px}.chaika-group-head .muted{display:block;margin-top:3px;font-size:11px}
-      .chaika-group-close{flex:none;width:34px;height:34px;border:0;border-radius:50%;background:#eef0ea;color:#111315;font-size:22px;line-height:1;display:grid;place-items:center}
       .chaika-group-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:10px 10px calc(12px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;scrollbar-width:thin;scrollbar-color:#cdd1c7 transparent}
       .chaika-group-list::-webkit-scrollbar{width:5px}.chaika-group-list::-webkit-scrollbar-thumb{background:#cdd1c7;border-radius:999px}
       .chaika-group-event{background:#f8f9f6!important;color:#111315!important;border:1px solid #e2e5dd!important;border-radius:16px!important;box-shadow:none!important;touch-action:manipulation}
@@ -1385,7 +1389,6 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
       <div class="chaika-group-sheet">
         <div class="chaika-group-head">
           <div class="chaika-group-head-main"><h3>${group.length} событий</h3><span class="muted">Премиум выше · листай список</span></div>
-          <button class="chaika-group-close" type="button" aria-label="Закрыть">×</button>
         </div>
         <div class="chaika-group-list">
           ${group.map(event => {
@@ -1405,10 +1408,6 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
     L.DomEvent.disableClickPropagation(els.sheet);
     L.DomEvent.disableScrollPropagation(els.sheet);
 
-    els.sheet.querySelector('.chaika-group-close')?.addEventListener('click', () => {
-      els.sheet.classList.remove('chaika-group-open');
-      closeEventSheet();
-    });
     els.sheet.querySelectorAll('[data-group-event]').forEach(button => {
       button.addEventListener('click', () => {
         els.sheet.classList.remove('chaika-group-open');

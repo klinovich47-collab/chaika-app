@@ -38,14 +38,16 @@ Deno.serve(async req=>{
   try{
     const body=await req.json(),u=await verify(String(body.initData||'')),action=String(body.action||'dashboard');
     const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}}),uid=Number(u.id);
-    const {data:profile,error:pe}=await db.from('telegram_users').select('telegram_user_id,is_admin').eq('telegram_user_id',uid).maybeSingle();if(pe)throw pe;
+    const {data:profile,error:pe}=await db.from('telegram_users').select('telegram_user_id,is_admin,is_moderator').eq('telegram_user_id',uid).maybeSingle();if(pe)throw pe;
     const isAdmin=Boolean(profile?.is_admin);
+    const isModerator=Boolean(profile?.is_moderator);
+    const canModerate=isAdmin||isModerator;
 
     if(action==='dashboard'){
       const {data:mine,error:me}=await db.from('events').select(fields).eq('telegram_owner_id',uid).order('created_at',{ascending:false}).limit(100);if(me)throw me;
       let moderation:any[]=[];
-      if(isAdmin){const {data,error}=await db.from('events').select(fields).or('source.is.null,moderation_status.eq.review').order('created_at',{ascending:false}).limit(200);if(error)throw error;moderation=data||[];}
-      return reply({ok:true,is_admin:isAdmin,my_events:mine||[],moderation});
+      if(canModerate){const {data,error}=await db.from('events').select(fields).or('source.is.null,moderation_status.eq.review').order('created_at',{ascending:false}).limit(200);if(error)throw error;moderation=data||[];}
+      return reply({ok:true,is_admin:isAdmin,is_moderator:isModerator,can_moderate:canModerate,my_events:mine||[],moderation});
     }
 
     if(action==='forum_status'){
@@ -80,14 +82,14 @@ Deno.serve(async req=>{
     const eventId=String(body.eventId||'');if(!/^[0-9a-f-]{36}$/i.test(eventId))throw new Error('invalid_event_id');
     const {data:event,error:ee}=await db.from('events').select('id,telegram_owner_id,moderation_metadata').eq('id',eventId).maybeSingle();if(ee)throw ee;if(!event)throw new Error('event_not_found');
     if(action==='delete'){
-      if(!isAdmin&&Number(event.telegram_owner_id)!==uid)return reply({ok:false,error:'forbidden'},403);
+      if(!canModerate&&Number(event.telegram_owner_id)!==uid)return reply({ok:false,error:'forbidden'},403);
       const {error}=await db.from('events').delete().eq('id',eventId);if(error)throw error;return reply({ok:true,deleted:true});
     }
     if(action==='moderate'){
-      if(!isAdmin)return reply({ok:false,error:'forbidden'},403);
+      if(!canModerate)return reply({ok:false,error:'forbidden'},403);
       const decision=String(body.decision||'');if(!['published','rejected'].includes(decision))throw new Error('invalid_decision');
-      const at=new Date().toISOString(),metadata={...(event.moderation_metadata||{}),admin:{telegram_user_id:uid,decision,at}};
-      const {error}=await db.from('events').update({moderation_status:decision,moderation_reason:`admin_${decision}`,moderation_metadata:metadata,moderated_at:at,updated_at:at}).eq('id',eventId);if(error)throw error;
+      const at=new Date().toISOString(),role=isAdmin?'admin':'moderator',metadata={...(event.moderation_metadata||{}),reviewer:{telegram_user_id:uid,role,decision,at}};
+      const {error}=await db.from('events').update({moderation_status:decision,moderation_reason:`${role}_${decision}`,moderation_metadata:metadata,moderated_at:at,updated_at:at}).eq('id',eventId);if(error)throw error;
       return reply({ok:true,status:decision});
     }
     return reply({ok:false,error:'unknown_action'},400);
