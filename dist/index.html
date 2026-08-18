@@ -137,7 +137,7 @@
           <label>Ссылка <input name="ticketUrl" type="url" placeholder="Telegram или другая ссылка" /></label>
           <button id="addTelegramLinkBtn" class="secondary-btn small" type="button">Добавить мой Telegram username</button>
 
-          <button class="primary-btn" type="submit">Отправить на модерацию</button>
+          <button class="primary-btn" type="submit">Опубликовать событие</button>
           <p class="form-note">Название, описание и ссылка проходят автоматическую проверку. Сомнительные события уходят модератору.</p>
         </form>
       </section>
@@ -145,7 +145,7 @@
       <section id="profileView" class="view scroll-view">
         <div class="profile-card"><div id="avatar" class="avatar">И</div><div><h2 id="profileName">Илья</h2><p id="profileUsername" class="muted">Telegram Mini App</p></div></div>
         <div class="stats-grid"><div><strong id="goingStat">0</strong><span>иду</span></div><div><strong id="createdStat">0</strong><span>создано</span></div><div><strong id="refStat">0</strong><span>рефералов</span></div></div>
-        <div class="moderation-card"><h3>Модерация</h3><p>Каждое событие от пользователя скрыто до ручной проверки названия и описания.</p><div class="status-line"><span class="status-dot review"></span>Отправлено — ждёт решения модератора</div><div class="status-line"><span class="status-dot ok"></span>Одобрено — появляется на карте</div><div class="status-line"><span class="status-dot block"></span>Нарушение — отклоняется</div></div>
+        <div class="moderation-card"><h3>Модерация</h3><p>Безопасные события публикуются сразу. Сомнительные формулировки ждут ручной проверки.</p><div class="status-line"><span class="status-dot review"></span>На проверке — пока скрыто с карты</div><div class="status-line"><span class="status-dot ok"></span>Проверено — опубликовано</div><div class="status-line"><span class="status-dot block"></span>Нарушение — отклонено</div></div>
         <button id="resetBtn" class="secondary-btn">Сбросить локальные данные</button>
       </section>
     </main>
@@ -228,6 +228,6 @@
   <div id="toast" class="toast"></div>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="./app.js?rev=34"></script>
+  <script src="./app.js?rev=35"></script>
 </body>
 </html>

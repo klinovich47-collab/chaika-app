@@ -136,6 +136,6 @@ shareEvent=async function(id){
 })();
 
 const chaikaFormNote=document.querySelector('#eventForm .form-note');
-if(chaikaFormNote)chaikaFormNote.textContent='Название, описание и место проходят автоматическую проверку. Сленг, обфускация и двусмысленные формулировки уходят на ручную модерацию; фото также проверяется перед публикацией.';
+if(chaikaFormNote)chaikaFormNote.textContent='Название, описание и ссылка проходят автоматическую проверку. Сленг, обфускация и двусмысленные формулировки уходят на ручную модерацию.';
 const chaikaConcertNote=document.querySelector('#concertsView .legal-note');
 if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автоматически обновляются из внешних источников. Кнопка покупки открывает страницу источника или регистрации.';
