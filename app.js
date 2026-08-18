@@ -127,7 +127,7 @@ const onboardingSteps=[
   {kicker:'ЗНАКОМСТВО',title:'Покажу, как тут всё работает',text:'На карте — события вокруг тебя. Быстро покажу основные кнопки.',speech:'Йоу! Я Чайка',mascot:MASCOT_URL,button:'Начать'},
   {kicker:'КАРТА',title:'Смотри, что происходит рядом',text:'Тут события на карте. Нажимай на маркеры и выбирай, куда пойти.',speech:'Вот что рядом',mascot:MASCOT_URL,button:'Дальше'},
   {kicker:'ЛЕНТА',title:'Листай события списком',text:'В ленте удобно смотреть фото, расстояние, время и кто идёт.',speech:'Можно и так',mascot:MASCOT_URL,button:'Дальше'},
-  {kicker:'СОЗДАТЬ',title:'Создай своё событие',text:'Нажми +, выбери иконку, добавь одно фото, место и время.',speech:'Теперь твоя очередь',mascot:MASCOT_POINT_URL,button:'Понял!'}
+  {kicker:'СОЗДАТЬ',title:'Создай своё событие',text:'Нажми +, выбери иконку, добавь описание, место и время.',speech:'Теперь твоя очередь',mascot:MASCOT_POINT_URL,button:'Понял!'}
 ]
 let onboardingStep=0;
 const onboardingEl=$('onboarding'), onboardingDots=$('onboardingDots');

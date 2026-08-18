@@ -7,6 +7,7 @@ const out=(x:unknown,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{.
 async function mac(key:Uint8Array,msg:string){const k=await crypto.subtle.importKey("raw",key,{name:"HMAC",hash:"SHA-256"},false,["sign"]);return new Uint8Array(await crypto.subtle.sign("HMAC",k,enc.encode(msg)));}
 const hx=(b:Uint8Array)=>[...b].map(x=>x.toString(16).padStart(2,"0")).join("");
 function eq(a:string,b:string){if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0;}
+function startOfMoscowDay(nowMs=Date.now()){const offsetMs=3*3600000,d=new Date(nowMs+offsetMs);return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-offsetMs).toISOString();}
 async function verify(raw:string){const token=Deno.env.get("TELEGRAM_BOT_TOKEN");if(!token)throw new Error("bot_not_configured");const p=new URLSearchParams(raw),hash=(p.get("hash")||"").toLowerCase();const auth=Number(p.get("auth_date")||0),now=Math.floor(Date.now()/1000);if(!hash)throw new Error("hash_missing");if(!auth||auth>now+300||now-auth>86400)throw new Error("init_data_expired");const chk=(drop=false)=>[...p.entries()].filter(([k])=>k!=="hash"&&(!drop||k!=="signature")).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${k}=${v}`).join("\n");const secret=await mac(enc.encode("WebAppData"),token);let ok=eq(hx(await mac(secret,chk(false))),hash);if(!ok&&p.has("signature"))ok=eq(hx(await mac(secret,chk(true))),hash);if(!ok)throw new Error("signature_invalid");const u=JSON.parse(p.get("user")||"null");if(!u?.id)throw new Error("user_missing");return u;}
 
 const cats=new Set(['guitar','music','mic','drink','chess','chat','coffee','game','art','walk','sport','dog','study','dating','party','other']);
@@ -96,27 +97,21 @@ Deno.serve(async(req)=>{
 
     const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}}),now=new Date().toISOString();
     const uid=Number(u.id),profile={telegram_user_id:uid,username:u.username||null,first_name:u.first_name||'',last_name:u.last_name||null,language_code:u.language_code||null,photo_url:u.photo_url||null,is_premium:Boolean(u.is_premium),allows_write_to_pm:u.allows_write_to_pm??null,updated_at:now,last_auth_at:now};const {error:ue}=await db.from('telegram_users').upsert(profile,{onConflict:'telegram_user_id'});if(ue)throw ue;
-    const {data:role,error:roleError}=await db.from('telegram_users').select('is_admin').eq('telegram_user_id',uid).maybeSingle();if(roleError)throw roleError;
-    if(!role?.is_admin){
-      const hourAgo=new Date(Date.now()-3600000).toISOString();
-      const [{count:recentCount,error:recentError},{count:activeCount,error:activeError}]=await Promise.all([
-        db.from('events').select('id',{count:'exact',head:true}).eq('telegram_owner_id',uid).gte('created_at',hourAgo),
-        db.from('events').select('id',{count:'exact',head:true}).eq('telegram_owner_id',uid).in('moderation_status',['review','published']).gt('expires_at',now)
-      ]);
-      if(recentError)throw recentError;if(activeError)throw activeError;
-      if((recentCount||0)>=5)throw new Error('event_rate_limit');
-      if((activeCount||0)>=3)throw new Error('active_event_limit');
-    }
+    const {data:role,error:roleError}=await db.from('telegram_users').select('is_admin,is_moderator').eq('telegram_user_id',uid).maybeSingle();if(roleError)throw roleError;
+    const elevated=Boolean(role?.is_admin||role?.is_moderator),dailyLimit=elevated?50:5;
+    const {count:dailyCount,error:dailyError}=await db.from('events').select('id',{count:'exact',head:true}).eq('telegram_owner_id',uid).gte('created_at',startOfMoscowDay());if(dailyError)throw dailyError;
+    if((dailyCount||0)>=dailyLimit)throw new Error(elevated?'moderator_daily_event_limit':'user_daily_event_limit');
 
     const localFields={title:localModeration(title),description:localModeration(description),link:localModeration(ticketUrl)};const local=strictestLocal(localFields);if(local.status==='block')throw new Error('event_blocked');
     const allText=`Название: ${title}\nОписание: ${description}\nСсылка: ${ticketUrl}`;
     const ai=await aiModeration(allText,image);if(ai.severe)throw new Error('event_blocked');
-    const mod:'review'='review';
-    const reason=ai.flagged?(ai.reason||'ai_flagged'):(!ai.available||ai.error)?'automated_moderation_unavailable':local.status==='review'?local.reason:'manual_review_required';
-    const metadata={local:{status:local.status,reason:local.reason,fields:localFields},ai:{available:Boolean(ai.available),flagged:Boolean(ai.flagged),severe:Boolean(ai.severe),error:Boolean((ai as any).error),reason:ai.reason||null,model:(ai as any).model||null,categories:(ai as any).categories||null,scores:(ai as any).scores||null},manual_review_required:true,has_image:Boolean(image)};
+    const needsReview=local.status==='review'||ai.flagged;
+    const mod:'review'|'published'=needsReview?'review':'published';
+    const reason=ai.flagged?(ai.reason||'ai_flagged'):local.status==='review'?local.reason:(!ai.available||ai.error)?'local_fallback_clean':'automated_checks_clean';
+    const metadata={local:{status:local.status,reason:local.reason,fields:localFields},ai:{available:Boolean(ai.available),flagged:Boolean(ai.flagged),severe:Boolean(ai.severe),error:Boolean((ai as any).error),reason:ai.reason||null,model:(ai as any).model||null,categories:(ai as any).categories||null,scores:(ai as any).scores||null},manual_review_required:needsReview,has_image:Boolean(image)};
 
-    const row={title,category,event_type:type,starts_at:starts.toISOString(),expires_at:expires,price_rub:price,venue,lat,lng,age_limit:age,description,ticket_url:ticketUrl||null,image_url:image||null,organizer_name:String(u.first_name||'Пользователь').slice(0,80),telegram_owner_id:uid,promoted:false,moderation_status:mod,moderation_reason:reason,moderation_metadata:metadata,moderated_at:null,going_count:0};
+    const row={title,category,event_type:type,starts_at:starts.toISOString(),expires_at:expires,price_rub:price,venue,lat,lng,age_limit:age,description,ticket_url:ticketUrl||null,image_url:image||null,organizer_name:String(u.first_name||'Пользователь').slice(0,80),telegram_owner_id:uid,promoted:false,moderation_status:mod,moderation_reason:reason,moderation_metadata:metadata,moderated_at:mod==='published'?now:null,going_count:0};
     const {data,error}=await db.from('events').insert(row).select('id,moderation_status,moderation_reason').single();if(error)throw error;
-    return out({ok:true,...data,moderation_engine:ai.available&&!ai.error?'rules+openai-omni+manual':'rules+manual'});
+    return out({ok:true,...data,moderation_engine:ai.available&&!ai.error?'rules+openai-omni':'rules-fallback'});
   }catch(err){const m=err instanceof Error?err.message:'create_failed';const status=m==='bot_not_configured'?503:(m.includes('signature')||m.includes('init_data')||m.includes('user_')||m==='hash_missing'?401:400);return out({ok:false,error:m},status);}
 });
