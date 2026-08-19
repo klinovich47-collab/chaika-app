@@ -155,7 +155,15 @@ const CHAIKA_DB_KEY='sb_publishable_xkcPYIVEkGc2QZ0AsCU1qA_g3BywKNA';
 const CHAIKA_EDGE_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4ZWJ6endxdXZnenBia3RqaWdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTAzMzYsImV4cCI6MjEwMjIyNjMzNn0.jJusld8wIoMigOPWj92hm3xyVajlgYmsCFf5Ki9OYAU';
 const CHAIKA_CLIENT_KEY='chaika_client_key_v1';
 const CHAIKA_CREATED_KEY='chaika_created_ids';
-const chaikaAuth={status:'idle',user:null,error:null,createdIds:[]};
+const chaikaAuth={status:'idle',user:null,error:null,createdIds:[],promise:null};
+
+function chaikaAuthMessage(code){
+  const value=String(code||'');
+  if(value.includes('init_data_expired'))return 'Сессия Telegram устарела. Закрой и снова открой ЧАЙКУ.';
+  if(value.includes('signature_invalid')||value.includes('hash_missing')||value.includes('user_missing'))return 'Не удалось подтвердить Telegram-профиль. Открой ЧАЙКУ заново через @chaika47bot.';
+  if(value.includes('bot_not_configured'))return 'Telegram-авторизация временно недоступна.';
+  return 'Не удалось связаться с профилем. Проверь интернет и попробуй ещё раз.';
+}
 
 function chaikaClientKey(){let key=localStorage.getItem(CHAIKA_CLIENT_KEY);if(!key){key=window.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&3|8);return v.toString(16)});localStorage.setItem(CHAIKA_CLIENT_KEY,key)}return key}
 const chaikaClientId=chaikaClientKey();
@@ -174,9 +182,9 @@ async function chaikaSync(){await Promise.all([chaikaLoadEvents(false),chaikaLoa
 function chaikaPruneExpiredEvents(){const before=state.events.length;state.events=state.events.filter(e=>isEventCurrent(e));if(state.events.length===before)return;const selectedStillExists=!state.selectedId||state.events.some(e=>e.id===state.selectedId);if(!selectedStillExists)closeEventSheet();const detailId=els.detail?.dataset?.eventId;if(detailId&&!state.events.some(e=>e.id===detailId))closeEventDetail();renderMap();updateProfile()}
 
 const originalUpdateProfile=updateProfile;
-updateProfile=function(){originalUpdateProfile();const name=$('profileName'),username=$('profileUsername'),avatar=$('avatar'),created=$('createdStat');if(chaikaAuth.status==='ready'&&chaikaAuth.user){const u=chaikaAuth.user;name.textContent=[u.first_name,u.last_name].filter(Boolean).join(' ')||'Пользователь';username.textContent=u.username?`@${u.username} · Telegram подтверждён`:'Telegram подтверждён';avatar.textContent=(u.first_name||'Ч').slice(0,1).toUpperCase();created.textContent=String(chaikaAuth.createdIds.length)}else if(!window.Telegram?.WebApp?.initData){name.textContent='Гостевой режим';username.textContent='Публикация доступна после запуска в Telegram'}else if(chaikaAuth.status==='error'){username.textContent='Telegram-авторизация не настроена'}};
+updateProfile=function(){originalUpdateProfile();const name=$('profileName'),username=$('profileUsername'),avatar=$('avatar'),created=$('createdStat'),going=$('goingStat'),refs=$('refStat');if(chaikaAuth.status==='ready'&&chaikaAuth.user){const u=chaikaAuth.user;name.textContent=[u.first_name,u.last_name].filter(Boolean).join(' ')||'Пользователь';username.textContent=u.username?`@${u.username} · Telegram подтверждён`:'Telegram подтверждён';avatar.textContent=(u.first_name||'Ч').slice(0,1).toUpperCase();created.textContent=String(chaikaAuth.createdIds.length)}else if(!window.Telegram?.WebApp?.initData){name.textContent='Гостевой режим';username.textContent='Публикация доступна после запуска в Telegram'}else if(chaikaAuth.status==='loading'){username.textContent='Подтверждаем Telegram-профиль…';going.textContent='—';created.textContent='—';refs.textContent='—'}else if(chaikaAuth.status==='error'){username.textContent=chaikaAuthMessage(chaikaAuth.error);going.textContent='—';created.textContent='—';refs.textContent='—'}};
 
-async function chaikaAuthenticate(){const initData=window.Telegram?.WebApp?.initData||'';if(!initData){chaikaAuth.status='browser';updateProfile();return false}chaikaAuth.status='loading';try{const data=await chaikaEdge('telegram-auth',{initData});chaikaAuth.status='ready';chaikaAuth.user=data.user;chaikaAuth.createdIds=data.created_event_ids||[];state.createdIds=new Set(chaikaAuth.createdIds);localStorage.setItem(CHAIKA_CREATED_KEY,JSON.stringify(chaikaAuth.createdIds));updateProfile();await chaikaLoadEvents(false);return true}catch(error){console.error('CHAIKA Telegram auth',error);chaikaAuth.status='error';chaikaAuth.error=error.message;updateProfile();return false}}
+async function chaikaAuthenticate(){const initData=window.Telegram?.WebApp?.initData||'';if(!initData){chaikaAuth.status='browser';updateProfile();return false}if(chaikaAuth.status==='ready'&&chaikaAuth.user)return true;if(chaikaAuth.promise)return chaikaAuth.promise;chaikaAuth.status='loading';chaikaAuth.error=null;updateProfile();chaikaAuth.promise=(async()=>{try{const data=await chaikaEdge('telegram-auth',{initData});chaikaAuth.status='ready';chaikaAuth.user=data.user;chaikaAuth.createdIds=data.created_event_ids||[];state.createdIds=new Set(chaikaAuth.createdIds);localStorage.setItem(CHAIKA_CREATED_KEY,JSON.stringify(chaikaAuth.createdIds));updateProfile();await chaikaLoadEvents(false);return true}catch(error){console.error('CHAIKA Telegram auth',error);chaikaAuth.status='error';chaikaAuth.error=error.message;updateProfile();return false}finally{chaikaAuth.promise=null}})();return chaikaAuth.promise}
 
 persist=function(){localStorage.setItem('tuda_going',JSON.stringify([...state.going]));localStorage.setItem(CHAIKA_CREATED_KEY,JSON.stringify([...state.createdIds]))};
 
@@ -311,18 +319,14 @@ function chaikaManagedToEvent(row){
 }
 function chaikaStatusLabel(status){return status==='published'?'Опубликовано':status==='rejected'?'Отклонено':'На проверке'}
 function chaikaEnsureManagementUI(){
-  if(document.getElementById('chaikaMyEventsSection'))return;
   const profile=$('profileView');
   if(!profile)return;
-  const moderationCard=profile.querySelector('.moderation-card');
-  const mine=document.createElement('section');
-  mine.id='chaikaMyEventsSection';mine.className='chaika-profile-section';
-  mine.innerHTML='<h3>Мои события</h3><p class="muted">Созданные с этого Telegram-профиля.</p><div id="chaikaMyEventsList" class="chaika-manage-list"></div>';
+  document.getElementById('chaikaMyEventsSection')?.remove();
+  if(document.getElementById('chaikaAdminSection'))return;
   const admin=document.createElement('section');
   admin.id='chaikaAdminSection';admin.className='chaika-profile-section chaika-admin-section hidden';
   admin.innerHTML='<h3>Модерация <span id="chaikaModerationRoleBadge" class="chaika-admin-badge">MODERATOR</span></h3><p class="muted">Открыть, одобрить, отклонить или удалить событие.</p><div id="chaikaAdminEventsList" class="chaika-manage-list"></div>';
-  profile.insertBefore(mine,moderationCard||$('resetBtn'));
-  profile.insertBefore(admin,moderationCard||$('resetBtn'));
+  profile.insertBefore(admin,$('resetBtn'));
 }
 function chaikaManagedEventCard(row,admin=false){
   const e=chaikaManagedToEvent(row),status=row.moderation_status||'review';
@@ -335,12 +339,7 @@ function chaikaManagedEventCard(row,admin=false){
 }
 function chaikaRenderManagementPanels(){
   chaikaEnsureManagementUI();
-  const mine=$('chaikaMyEventsList'),admin=$('chaikaAdminEventsList'),adminSection=$('chaikaAdminSection');
-  if(!mine)return;
-  if(chaikaAuth.status==='browser')mine.innerHTML='<div class="chaika-empty-manage">Открой ЧАЙКУ в Telegram, чтобы увидеть свои события.</div>';
-  else if(chaikaManagement.loading)mine.innerHTML='<div class="chaika-empty-manage">Загрузка…</div>';
-  else if(chaikaManagement.error)mine.innerHTML='<div class="chaika-empty-manage">Не удалось загрузить управление событиями.</div>';
-  else mine.innerHTML=chaikaManagement.myEvents.length?chaikaManagement.myEvents.map(row=>chaikaManagedEventCard(row,false)).join(''):'<div class="chaika-empty-manage">Ты пока не создавал событий.</div>';
+  const admin=$('chaikaAdminEventsList'),adminSection=$('chaikaAdminSection');
   adminSection?.classList.toggle('hidden',!chaikaManagement.canModerate);
   const roleBadge=$('chaikaModerationRoleBadge');
   if(roleBadge)roleBadge.textContent=chaikaManagement.isAdmin?'ADMIN':'MODERATOR';
@@ -1781,7 +1780,7 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
 
   const style = document.createElement('style');
   style.textContent = `
-    .profile-card{position:relative}.chaika-avatar-wrap{position:relative;width:66px;height:66px;flex:none}.chaika-avatar-wrap .avatar{width:66px;height:66px;overflow:hidden;padding:0}.chaika-avatar-wrap .avatar img{width:100%;height:100%;object-fit:cover;display:block}.chaika-avatar-edit{position:absolute;right:-3px;bottom:-3px;width:28px;height:28px;border-radius:50%;border:2px solid #0b0b0d;background:#d8ff43;color:#111207;font-size:15px;font-weight:900;display:grid;place-items:center;cursor:pointer}.stats-grid>div{cursor:pointer;transition:transform .15s ease,border-color .15s ease}.stats-grid>div:active{transform:scale(.98)}.stats-grid>div.chaika-stat-active{border-color:#d8ff43!important;background:#202515!important}.chaika-profile-activity{margin-top:14px;padding:14px;border:1px solid #2b2b33;border-radius:18px;background:#151519}.chaika-profile-activity-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.chaika-profile-activity h3{margin:0;font-size:17px}.chaika-activity-list{display:grid;gap:8px;margin-top:10px}.chaika-activity-card{width:100%;text-align:left;border:1px solid #2c2c34;background:#111115;color:#fff;border-radius:14px;padding:11px 12px;display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center}.chaika-activity-card:active{background:#1b1b21}.chaika-activity-icon{width:42px;height:42px;border-radius:12px;background:#25252d;display:grid;place-items:center;font-size:20px;overflow:hidden}.chaika-activity-icon img{width:100%;height:100%;object-fit:cover}.chaika-activity-main{min-width:0}.chaika-activity-title{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chaika-activity-meta{font-size:12px;color:#9999a4;margin-top:3px;line-height:1.3}.chaika-activity-arrow{font-size:22px;color:#8b8b95}.chaika-profile-empty{padding:12px 4px;color:#92929d;font-size:13px}.chaika-invite-btn{margin-top:10px;width:100%}.chaika-profile-loading{opacity:.62;pointer-events:none}`;
+    .profile-card{position:relative}.profile-card>div:last-child{min-width:0}.profile-card>div:last-child p{overflow-wrap:anywhere}.chaika-avatar-wrap{position:relative;width:66px;height:66px;flex:none}.chaika-avatar-wrap .avatar{width:66px;height:66px;overflow:hidden;padding:0}.chaika-avatar-wrap .avatar img{width:100%;height:100%;object-fit:cover;display:block}.chaika-avatar-edit{position:absolute;right:-3px;bottom:-3px;width:28px;height:28px;border-radius:50%;border:2px solid #0b0b0d;background:#d8ff43;color:#111207;font-size:15px;font-weight:900;display:grid;place-items:center;cursor:pointer}.stats-grid>div{cursor:pointer;transition:transform .15s ease,border-color .15s ease}.stats-grid>div:active{transform:scale(.98)}.stats-grid>div.chaika-stat-active{border-color:#d8ff43!important;background:#202515!important}.chaika-profile-activity{margin-top:14px;padding:14px;border:1px solid #2b2b33;border-radius:18px;background:#151519}.chaika-profile-activity-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.chaika-profile-activity h3{margin:0;font-size:17px}.chaika-activity-list{display:grid;gap:8px;margin-top:10px}.chaika-created-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch}.chaika-activity-card{width:100%;text-align:left;border:1px solid #2c2c34;background:#111115;color:#fff;border-radius:14px;padding:11px 12px;display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center}.chaika-activity-card:active{background:#1b1b21}.chaika-created-delete{border:1px solid #3a2b31;background:#1d1418;color:#ff7a8e;border-radius:14px;padding:0 11px;font-size:12px;font-weight:800}.chaika-activity-icon{width:42px;height:42px;border-radius:12px;background:#25252d;display:grid;place-items:center;font-size:20px;overflow:hidden}.chaika-activity-icon img{width:100%;height:100%;object-fit:cover}.chaika-activity-main{min-width:0}.chaika-activity-title{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chaika-activity-meta{font-size:12px;color:#9999a4;margin-top:3px;line-height:1.3}.chaika-activity-arrow{font-size:22px;color:#8b8b95}.chaika-profile-empty{padding:12px 4px;color:#92929d;font-size:13px;line-height:1.45}.chaika-profile-retry{margin-top:10px;width:100%}.chaika-invite-btn{margin-top:10px;width:100%}.chaika-profile-loading{opacity:.62;pointer-events:none}`;
   document.head.appendChild(style);
 
   const avatar = document.getElementById('avatar');
@@ -1843,13 +1842,26 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
       list.innerHTML=d.attending?.length?d.attending.map(r=>`<button class="chaika-activity-card" data-event-open="${r.id}" type="button"><span class="chaika-activity-icon">📍</span><span class="chaika-activity-main"><span class="chaika-activity-title">${escapeHtml(r.title)}</span><span class="chaika-activity-meta">${dateLabel(r)} · ${escapeHtml(r.venue||'')}</span></span><span class="chaika-activity-arrow">›</span></button>`).join(''):'<div class="chaika-profile-empty">Ты пока никуда не собираешься.</div>';
     } else if(profileState.active==='created'){
       title.textContent='Созданные события';
-      list.innerHTML=d.created?.length?d.created.map(r=>`<button class="chaika-activity-card" data-event-open="${r.id}" type="button"><span class="chaika-activity-icon">＋</span><span class="chaika-activity-main"><span class="chaika-activity-title">${escapeHtml(r.title)}</span><span class="chaika-activity-meta">${dateLabel(r)} · ${escapeHtml(r.venue||'')} · ${r.moderation_status==='published'?'опубликовано':r.moderation_status==='rejected'?'отклонено':'на проверке'}</span></span><span class="chaika-activity-arrow">›</span></button>`).join(''):'<div class="chaika-profile-empty">Ты пока не создавал событий.</div>';
+      list.innerHTML=d.created?.length?d.created.map(r=>`<div class="chaika-created-row"><button class="chaika-activity-card" data-event-open="${r.id}" type="button"><span class="chaika-activity-icon">＋</span><span class="chaika-activity-main"><span class="chaika-activity-title">${escapeHtml(r.title)}</span><span class="chaika-activity-meta">${dateLabel(r)} · ${escapeHtml(r.venue||'')} · ${r.moderation_status==='published'?'опубликовано':r.moderation_status==='rejected'?'отклонено':'на проверке'}</span></span><span class="chaika-activity-arrow">›</span></button><button class="chaika-created-delete" data-event-delete="${r.id}" type="button">Удалить</button></div>`).join(''):'<div class="chaika-profile-empty">Ты пока не создавал событий.</div>';
     } else {
       title.textContent='Мои рефералы';
       list.innerHTML=d.referrals?.length?d.referrals.map(u=>{const name=[u.first_name,u.last_name].filter(Boolean).join(' ')||u.username||'Пользователь';const photo=u.avatar_url||u.photo_url;return `<button class="chaika-activity-card" data-ref-user="${escapeHtml(u.username||'')}" type="button"><span class="chaika-activity-icon">${photo?`<img src="${escapeHtml(photo)}" alt="">`:'👤'}</span><span class="chaika-activity-main"><span class="chaika-activity-title">${escapeHtml(name)}</span><span class="chaika-activity-meta">${u.username?'@'+escapeHtml(u.username):'Пользователь ЧАЙКИ'}</span></span><span class="chaika-activity-arrow">›</span></button>`}).join(''):'<div class="chaika-profile-empty">Пока никто не зарегистрировался по твоей ссылке.</div>';
     }
     list.querySelectorAll('[data-event-open]').forEach(btn=>btn.onclick=()=>openServerEvent(btn.dataset.eventOpen));
+    list.querySelectorAll('[data-event-delete]').forEach(btn=>btn.onclick=()=>deleteCreatedEvent(btn.dataset.eventDelete));
     list.querySelectorAll('[data-ref-user]').forEach(btn=>btn.onclick=()=>{const username=btn.dataset.refUser;if(username)tgApp?.openTelegramLink?.(`https://t.me/${username}`)});
+  }
+
+  async function deleteCreatedEvent(id){
+    if(!window.confirm('Удалить это событие?'))return;
+    try{
+      await chaikaEdge('telegram-event-management',{initData:tgApp?.initData||'',action:'delete',eventId:id});
+      profileState.loaded=false;profileState.data=null;
+      state.createdIds.delete(id);chaikaAuth.createdIds=chaikaAuth.createdIds.filter(eventId=>eventId!==id);persist();
+      await Promise.all([chaikaLoadEvents(false),loadProfile(true)]);
+      if(typeof chaikaLoadManagement==='function')await chaikaLoadManagement(false);
+      toast('Событие удалено');
+    }catch(e){console.error('CHAIKA profile delete',e);toast('Не удалось удалить событие')}
   }
 
   function openServerEvent(id){const row=[...(profileState.data?.attending||[]),...(profileState.data?.created||[])].find(x=>x.id===id);if(!row)return;const e=mapRow(row);const idx=state.events.findIndex(x=>x.id===e.id);if(idx>=0)state.events[idx]={...state.events[idx],...e};else state.events.push(e);switchView('mapView');setTimeout(()=>{renderMap();showEvent(e.id)},80);}
@@ -1858,7 +1870,16 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
     if(profileState.loading||(!force&&profileState.loaded))return;
     if(!window.Telegram?.WebApp?.initData)return;
     profileState.loading=true;panel.classList.add('chaika-profile-loading');
-    try{const data=await profileEdge('dashboard');profileState.data=data;profileState.loaded=true;renderAvatar(data.profile);document.getElementById('goingStat').textContent=String(data.counts?.going||0);document.getElementById('createdStat').textContent=String(data.counts?.created||0);document.getElementById('refStat').textContent=String(data.counts?.referrals||0);renderSection();}catch(e){console.error('CHAIKA profile',e);document.getElementById('chaikaActivityList').innerHTML='<div class="chaika-profile-empty">Не удалось загрузить профиль.</div>';}finally{profileState.loading=false;panel.classList.remove('chaika-profile-loading');}
+    try{
+      if(chaikaAuth.status!=='ready'&&!(await chaikaAuthenticate()))throw new Error(chaikaAuth.error||'profile_auth_failed');
+      const data=await profileEdge('dashboard');profileState.data=data;profileState.loaded=true;renderAvatar(data.profile);document.getElementById('goingStat').textContent=String(data.counts?.going||0);document.getElementById('createdStat').textContent=String(data.counts?.created||0);document.getElementById('refStat').textContent=String(data.counts?.referrals||0);renderSection();
+    }catch(e){
+      console.error('CHAIKA profile',e);
+      const message=typeof chaikaAuthMessage==='function'?chaikaAuthMessage(e?.message):'Не удалось загрузить профиль. Закрой и снова открой ЧАЙКУ.';
+      document.getElementById('goingStat').textContent='—';document.getElementById('createdStat').textContent='—';document.getElementById('refStat').textContent='—';
+      document.getElementById('chaikaActivityList').innerHTML=`<div class="chaika-profile-empty">${escapeHtml(message)}</div><button id="chaikaProfileRetry" class="secondary-btn chaika-profile-retry" type="button">Повторить</button>`;
+      document.getElementById('chaikaProfileRetry').onclick=()=>{profileState.loaded=false;chaikaAuth.status='idle';loadProfile(true)};
+    }finally{profileState.loading=false;panel.classList.remove('chaika-profile-loading');}
   }
 
   function openSection(name){profileState.active=name||'going';if(!profileState.loaded)loadProfile();else renderSection();}
@@ -1892,6 +1913,7 @@ if(chaikaConcertNote)chaikaConcertNote.textContent='Концерты автом�
   registerReferralFromStart();
   if(!profileView.classList.contains('hidden'))loadProfile();
 })();
+
 
 /* CHAIKA iOS/Telegram safe-area alignment (rev16). */
 (() => {

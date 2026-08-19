@@ -115,18 +115,14 @@ function chaikaManagedToEvent(row){
 }
 function chaikaStatusLabel(status){return status==='published'?'Опубликовано':status==='rejected'?'Отклонено':'На проверке'}
 function chaikaEnsureManagementUI(){
-  if(document.getElementById('chaikaMyEventsSection'))return;
   const profile=$('profileView');
   if(!profile)return;
-  const moderationCard=profile.querySelector('.moderation-card');
-  const mine=document.createElement('section');
-  mine.id='chaikaMyEventsSection';mine.className='chaika-profile-section';
-  mine.innerHTML='<h3>Мои события</h3><p class="muted">Созданные с этого Telegram-профиля.</p><div id="chaikaMyEventsList" class="chaika-manage-list"></div>';
+  document.getElementById('chaikaMyEventsSection')?.remove();
+  if(document.getElementById('chaikaAdminSection'))return;
   const admin=document.createElement('section');
   admin.id='chaikaAdminSection';admin.className='chaika-profile-section chaika-admin-section hidden';
   admin.innerHTML='<h3>Модерация <span id="chaikaModerationRoleBadge" class="chaika-admin-badge">MODERATOR</span></h3><p class="muted">Открыть, одобрить, отклонить или удалить событие.</p><div id="chaikaAdminEventsList" class="chaika-manage-list"></div>';
-  profile.insertBefore(mine,moderationCard||$('resetBtn'));
-  profile.insertBefore(admin,moderationCard||$('resetBtn'));
+  profile.insertBefore(admin,$('resetBtn'));
 }
 function chaikaManagedEventCard(row,admin=false){
   const e=chaikaManagedToEvent(row),status=row.moderation_status||'review';
@@ -139,12 +135,7 @@ function chaikaManagedEventCard(row,admin=false){
 }
 function chaikaRenderManagementPanels(){
   chaikaEnsureManagementUI();
-  const mine=$('chaikaMyEventsList'),admin=$('chaikaAdminEventsList'),adminSection=$('chaikaAdminSection');
-  if(!mine)return;
-  if(chaikaAuth.status==='browser')mine.innerHTML='<div class="chaika-empty-manage">Открой ЧАЙКУ в Telegram, чтобы увидеть свои события.</div>';
-  else if(chaikaManagement.loading)mine.innerHTML='<div class="chaika-empty-manage">Загрузка…</div>';
-  else if(chaikaManagement.error)mine.innerHTML='<div class="chaika-empty-manage">Не удалось загрузить управление событиями.</div>';
-  else mine.innerHTML=chaikaManagement.myEvents.length?chaikaManagement.myEvents.map(row=>chaikaManagedEventCard(row,false)).join(''):'<div class="chaika-empty-manage">Ты пока не создавал событий.</div>';
+  const admin=$('chaikaAdminEventsList'),adminSection=$('chaikaAdminSection');
   adminSection?.classList.toggle('hidden',!chaikaManagement.canModerate);
   const roleBadge=$('chaikaModerationRoleBadge');
   if(roleBadge)roleBadge.textContent=chaikaManagement.isAdmin?'ADMIN':'MODERATOR';

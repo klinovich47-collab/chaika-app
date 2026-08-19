@@ -4,7 +4,15 @@ const CHAIKA_DB_KEY='sb_publishable_xkcPYIVEkGc2QZ0AsCU1qA_g3BywKNA';
 const CHAIKA_EDGE_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4ZWJ6endxdXZnenBia3RqaWdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTAzMzYsImV4cCI6MjEwMjIyNjMzNn0.jJusld8wIoMigOPWj92hm3xyVajlgYmsCFf5Ki9OYAU';
 const CHAIKA_CLIENT_KEY='chaika_client_key_v1';
 const CHAIKA_CREATED_KEY='chaika_created_ids';
-const chaikaAuth={status:'idle',user:null,error:null,createdIds:[]};
+const chaikaAuth={status:'idle',user:null,error:null,createdIds:[],promise:null};
+
+function chaikaAuthMessage(code){
+  const value=String(code||'');
+  if(value.includes('init_data_expired'))return 'Сессия Telegram устарела. Закрой и снова открой ЧАЙКУ.';
+  if(value.includes('signature_invalid')||value.includes('hash_missing')||value.includes('user_missing'))return 'Не удалось подтвердить Telegram-профиль. Открой ЧАЙКУ заново через @chaika47bot.';
+  if(value.includes('bot_not_configured'))return 'Telegram-авторизация временно недоступна.';
+  return 'Не удалось связаться с профилем. Проверь интернет и попробуй ещё раз.';
+}
 
 function chaikaClientKey(){let key=localStorage.getItem(CHAIKA_CLIENT_KEY);if(!key){key=window.crypto?.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&3|8);return v.toString(16)});localStorage.setItem(CHAIKA_CLIENT_KEY,key)}return key}
 const chaikaClientId=chaikaClientKey();
@@ -23,9 +31,9 @@ async function chaikaSync(){await Promise.all([chaikaLoadEvents(false),chaikaLoa
 function chaikaPruneExpiredEvents(){const before=state.events.length;state.events=state.events.filter(e=>isEventCurrent(e));if(state.events.length===before)return;const selectedStillExists=!state.selectedId||state.events.some(e=>e.id===state.selectedId);if(!selectedStillExists)closeEventSheet();const detailId=els.detail?.dataset?.eventId;if(detailId&&!state.events.some(e=>e.id===detailId))closeEventDetail();renderMap();updateProfile()}
 
 const originalUpdateProfile=updateProfile;
-updateProfile=function(){originalUpdateProfile();const name=$('profileName'),username=$('profileUsername'),avatar=$('avatar'),created=$('createdStat');if(chaikaAuth.status==='ready'&&chaikaAuth.user){const u=chaikaAuth.user;name.textContent=[u.first_name,u.last_name].filter(Boolean).join(' ')||'Пользователь';username.textContent=u.username?`@${u.username} · Telegram подтверждён`:'Telegram подтверждён';avatar.textContent=(u.first_name||'Ч').slice(0,1).toUpperCase();created.textContent=String(chaikaAuth.createdIds.length)}else if(!window.Telegram?.WebApp?.initData){name.textContent='Гостевой режим';username.textContent='Публикация доступна после запуска в Telegram'}else if(chaikaAuth.status==='error'){username.textContent='Telegram-авторизация не настроена'}};
+updateProfile=function(){originalUpdateProfile();const name=$('profileName'),username=$('profileUsername'),avatar=$('avatar'),created=$('createdStat'),going=$('goingStat'),refs=$('refStat');if(chaikaAuth.status==='ready'&&chaikaAuth.user){const u=chaikaAuth.user;name.textContent=[u.first_name,u.last_name].filter(Boolean).join(' ')||'Пользователь';username.textContent=u.username?`@${u.username} · Telegram подтверждён`:'Telegram подтверждён';avatar.textContent=(u.first_name||'Ч').slice(0,1).toUpperCase();created.textContent=String(chaikaAuth.createdIds.length)}else if(!window.Telegram?.WebApp?.initData){name.textContent='Гостевой режим';username.textContent='Публикация доступна после запуска в Telegram'}else if(chaikaAuth.status==='loading'){username.textContent='Подтверждаем Telegram-профиль…';going.textContent='—';created.textContent='—';refs.textContent='—'}else if(chaikaAuth.status==='error'){username.textContent=chaikaAuthMessage(chaikaAuth.error);going.textContent='—';created.textContent='—';refs.textContent='—'}};
 
-async function chaikaAuthenticate(){const initData=window.Telegram?.WebApp?.initData||'';if(!initData){chaikaAuth.status='browser';updateProfile();return false}chaikaAuth.status='loading';try{const data=await chaikaEdge('telegram-auth',{initData});chaikaAuth.status='ready';chaikaAuth.user=data.user;chaikaAuth.createdIds=data.created_event_ids||[];state.createdIds=new Set(chaikaAuth.createdIds);localStorage.setItem(CHAIKA_CREATED_KEY,JSON.stringify(chaikaAuth.createdIds));updateProfile();await chaikaLoadEvents(false);return true}catch(error){console.error('CHAIKA Telegram auth',error);chaikaAuth.status='error';chaikaAuth.error=error.message;updateProfile();return false}}
+async function chaikaAuthenticate(){const initData=window.Telegram?.WebApp?.initData||'';if(!initData){chaikaAuth.status='browser';updateProfile();return false}if(chaikaAuth.status==='ready'&&chaikaAuth.user)return true;if(chaikaAuth.promise)return chaikaAuth.promise;chaikaAuth.status='loading';chaikaAuth.error=null;updateProfile();chaikaAuth.promise=(async()=>{try{const data=await chaikaEdge('telegram-auth',{initData});chaikaAuth.status='ready';chaikaAuth.user=data.user;chaikaAuth.createdIds=data.created_event_ids||[];state.createdIds=new Set(chaikaAuth.createdIds);localStorage.setItem(CHAIKA_CREATED_KEY,JSON.stringify(chaikaAuth.createdIds));updateProfile();await chaikaLoadEvents(false);return true}catch(error){console.error('CHAIKA Telegram auth',error);chaikaAuth.status='error';chaikaAuth.error=error.message;updateProfile();return false}finally{chaikaAuth.promise=null}})();return chaikaAuth.promise}
 
 persist=function(){localStorage.setItem('tuda_going',JSON.stringify([...state.going]));localStorage.setItem(CHAIKA_CREATED_KEY,JSON.stringify([...state.createdIds]))};
 
