@@ -31,8 +31,9 @@ const museumExhibitionsRev21 = await readFile('museum-exhibitions-rev21.js', 'ut
 const mapSourceToggleRev24 = await readFile('map-source-toggle-rev24.js', 'utf8');
 const eventVisualsRev25 = await readFile('event-visuals-rev25.js', 'utf8');
 const userMapPivotRev36 = await readFile('user-map-pivot-rev36.js', 'utf8');
+const quickCreateRev37 = await readFile('quick-create-rev37.js', 'utf8');
 
-// Cache-bust the production bundle so Telegram WebView cannot keep the previous product model.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=36'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${mapSourceToggleRev24}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n`);
-console.log('Prepared CHAIKA production build: user-only live map pivot (rev=36).');
+// Cache-bust the production bundle so Telegram WebView cannot keep the previous creator flow.
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=37'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${mapSourceToggleRev24}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${quickCreateRev37}\n`);
+console.log('Prepared CHAIKA production build: user-only live map + quick create (rev=37).');
