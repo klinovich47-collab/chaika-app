@@ -71,6 +71,31 @@
     return (Array.isArray(list) ? list : []).filter(e => !String(e?.source || '').trim());
   }
 
+  function peopleDemoEvents() {
+    const now = Date.now();
+    const minute = 60 * 1000;
+    const rows = [
+      ['demo-people-01', 'Пьём кофе и знакомимся', 'coffee', -10, 110, 'Новая Голландия', 59.9292, 30.2891, 'Сидим у главного газона. Подходи, если хочется познакомиться и спокойно поболтать.', 5],
+      ['demo-people-02', 'Играем на гитаре у воды', 'guitar', 25, 180, 'Набережная Фонтанки', 59.9348, 30.3385, 'Берём акустику и собираемся небольшой компанией. Можно прийти со своим инструментом.', 8],
+      ['demo-people-03', 'Прогулка без маршрута', 'walk', 45, 150, 'Летний сад', 59.9457, 30.3354, 'Идём неспешно по центру, маршрут выберем вместе. Встречаемся у главного входа.', 4],
+      ['demo-people-04', 'Шахматы в Таврическом', 'chess', 70, 210, 'Таврический сад', 59.9476, 30.3726, 'Есть две доски. Уровень любой, главное — желание сыграть и пообщаться.', 7],
+      ['demo-people-05', 'Рисуем город вместе', 'art', 95, 240, 'Севкабель Порт', 59.9240, 30.2419, 'Берите скетчбук или планшет. Рисуем набережную и показываем работы друг другу.', 6],
+      ['demo-people-06', 'Ищем компанию на настолки', 'game', 125, 260, 'Петроградская сторона', 59.9611, 30.3128, 'Собираемся сыграть в несколько быстрых настольных игр. Новичкам всё объясним.', 9],
+      ['demo-people-07', 'Фрисби после работы', 'sport', 155, 270, 'Приморский парк Победы', 59.9717, 30.2604, 'Лёгкая дружеская игра без подготовки. Возьмите воду и удобную обувь.', 11],
+      ['demo-people-08', 'Гуляем с собаками', 'dog', 190, 300, 'Юсуповский сад', 59.9270, 30.3151, 'Спокойная прогулка для собак и хозяев. Встречаемся со стороны Садовой улицы.', 5],
+      ['demo-people-09', 'Практикуем английский', 'study', 230, 330, 'Бертгольд Центр', 59.9247, 30.3168, 'Разговорная встреча без учебников. Подойдёт средний уровень и выше.', 12],
+      ['demo-people-10', 'Смотрим закат с термосом', 'chat', 280, 390, 'Стрелка Васильевского острова', 59.9442, 30.3064, 'Берём чай, садимся у воды и провожаем день. Можно приходить одному.', 10]
+    ];
+    return rows.map(([id, title, category, startOffset, duration, venue, lat, lng, description, going]) => ({
+      id, title, category, event_type:'instant',
+      starts_at:new Date(now + startOffset * minute).toISOString(),
+      expires_at:new Date(now + (startOffset + duration) * minute).toISOString(),
+      price_rub:0, venue, lat, lng, age_limit:0, description,
+      ticket_url:'', image_url:'', promoted:false, going_count:going,
+      source:null, moderation_status:'published'
+    }));
+  }
+
   async function chaikaPivotLoadEvents(showError = false) {
     try {
       const now = new Date();
@@ -84,7 +109,9 @@
       q.set('or', `(expires_at.gt.${now.toISOString()},and(expires_at.is.null,starts_at.gt.${staleCutoff.toISOString()}))`);
       q.set('order', 'starts_at.asc');
       const rows = await chaikaRequest(`events?${q}`);
-      state.events = onlyPeopleEvents((rows || []).map(chaikaEvent)).filter(e => e.moderationStatus === 'published' && isEventCurrent(e));
+      const liveRows = Array.isArray(rows) ? rows : [];
+      state.events = onlyPeopleEvents([...peopleDemoEvents(), ...liveRows].map(chaikaEvent))
+        .filter(e => e.moderationStatus === 'published' && isEventCurrent(e));
       state.time = 'today';
       state.categories.clear();
       state.price = null;
@@ -96,6 +123,11 @@
       return true;
     } catch (error) {
       console.error('CHAIKA user-only events', error);
+      state.events = peopleDemoEvents().map(chaikaEvent)
+        .filter(e => e.moderationStatus === 'published' && isEventCurrent(e));
+      renderMap();
+      updateProfile();
+      updateEmptyState();
       if (showError) toast('Не удалось обновить карту');
       return false;
     }

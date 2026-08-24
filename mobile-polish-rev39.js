@@ -7,6 +7,7 @@
   const isIOS = platform === 'ios' || /iPhone|iPad|iPod/i.test(ua);
   document.body.classList.toggle('chaika-android', isAndroid);
   document.body.classList.toggle('chaika-ios', isIOS);
+  document.body.classList.toggle('chaika-telegram-fullscreen', tgApp?.isFullscreen === true);
 
   const style = document.createElement('style');
   style.id = 'chaikaMobilePolishRev39';
@@ -28,10 +29,16 @@
       align-items:flex-end!important;
     }
     body.chaika-android.chaika-user-map-pivot .topbar{
-      padding-top:56px!important;
+      padding-top:38px!important;
     }
     body.chaika-ios.chaika-user-map-pivot .topbar{
-      padding-top:max(52px,calc(env(safe-area-inset-top,0px) + 42px))!important;
+      padding-top:max(36px,env(safe-area-inset-top,0px))!important;
+    }
+    body.chaika-telegram-fullscreen.chaika-android.chaika-user-map-pivot .topbar{
+      padding-top:76px!important;
+    }
+    body.chaika-telegram-fullscreen.chaika-ios.chaika-user-map-pivot .topbar{
+      padding-top:max(76px,calc(env(safe-area-inset-top,0px) + 28px))!important;
     }
     body.chaika-user-map-pivot .brand-mark{width:48px!important;height:48px!important;flex:0 0 48px!important;border-radius:15px!important}
     body.chaika-user-map-pivot .brand-wrap{gap:10px!important;min-width:0!important}
@@ -210,6 +217,10 @@
     tgApp?.onEvent?.('viewportChanged', refreshViewport);
     tgApp?.onEvent?.('safeAreaChanged', refreshViewport);
     tgApp?.onEvent?.('contentSafeAreaChanged', refreshViewport);
+    tgApp?.onEvent?.('fullscreenChanged', () => {
+      document.body.classList.toggle('chaika-telegram-fullscreen', tgApp?.isFullscreen === true);
+      refreshViewport();
+    });
   } catch (_) {}
 
   requestAnimationFrame(refreshViewport);
