@@ -1,25 +1,17 @@
-/* CHAIKA rev54 — replace retired CARTO raster tiles after the legacy light-map module without touching map behavior. */
+/* CHAIKA rev55 — colorful street basemap only. App behavior remains untouched. */
 (() => {
   if (!window.L || typeof map === 'undefined') return;
 
-  const BASE = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-  const LABELS = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+  const STREET = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
 
   map.eachLayer(layer => {
     if (layer instanceof L.TileLayer) map.removeLayer(layer);
   });
 
-  map.__chaikaLightTiles = L.tileLayer(BASE, {
+  map.__chaikaLightTiles = L.tileLayer(STREET, {
     maxZoom: 20,
-    maxNativeZoom: 16,
+    maxNativeZoom: 19,
     detectRetina: false,
     attribution: 'Tiles © Esri'
-  }).addTo(map);
-
-  map.__chaikaLightLabels = L.tileLayer(LABELS, {
-    maxZoom: 20,
-    maxNativeZoom: 16,
-    detectRetina: false,
-    attribution: 'Labels © Esri'
   }).addTo(map);
 })();
