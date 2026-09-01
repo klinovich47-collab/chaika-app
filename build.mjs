@@ -18,8 +18,8 @@ const safetyShare = await readFile('safety-share-enhancements.js', 'utf8');
 const mapStress = await readFile('map-stress-enhancements.js', 'utf8');
 const eventChat = await readFile('event-chat-enhancements.js', 'utf8');
 const forumAutoconfigRev12 = await readFile('forum-autoconfig-rev12.js', 'utf8');
-const knownGoodEntryBasemapRev53 = await readFile('known-good-entry-basemap-rev53.js', 'utf8');
 const mapUiRev10 = await readFile('map-ui-rev10.js', 'utf8');
+const basemapCompatRev54 = await readFile('basemap-compat-rev54.js', 'utf8');
 const darkShellRev11 = await readFile('dark-shell-rev11.js', 'utf8');
 const interactionStabilityRev13 = await readFile('interaction-stability-rev13.js', 'utf8');
 const profileActivityRev14 = await readFile('profile-activity-rev14.js', 'utf8');
@@ -30,15 +30,15 @@ const sheetGeolocationRev19 = await readFile('sheet-geolocation-rev19.js', 'utf8
 const sheetLayoutRev20 = await readFile('sheet-layout-rev20.js', 'utf8');
 const museumExhibitionsRev21 = await readFile('museum-exhibitions-rev21.js', 'utf8');
 const eventVisualsRev25 = await readFile('event-visuals-rev25.js', 'utf8');
+const entryPromptResetRev54 = await readFile('entry-prompt-reset-rev54.js', 'utf8');
 const userMapPivotRev36 = await readFile('user-map-pivot-rev36.js', 'utf8');
-const realPeopleEventsRev44 = await readFile('real-people-events-rev44.js', 'utf8');
 const quickCreateRev37 = await readFile('quick-create-rev37.js', 'utf8');
 const mobilePolishRev39 = await readFile('mobile-polish-rev39.js', 'utf8');
 const overlaySafeAreaRev40 = await readFile('overlay-safearea-rev40.js', 'utf8');
 const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
 
-// Known-good 2026-08-26 people-only app. Only the retired CARTO endpoint is substituted and the entry prompt is reset per app load.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=53'));
-await writeFile('dist/app.js', `${app}\n\n${knownGoodEntryBasemapRev53}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
-console.log('Prepared CHAIKA production build: restored known-good people-only app (rev=53).');
+// Restored 2026-08-21 people-only app. Creator-type switch remains intentionally excluded.
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=54'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${basemapCompatRev54}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${entryPromptResetRev54}\n\n${userMapPivotRev36}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
+console.log('Prepared CHAIKA production build: restored people-only working app (rev=54).');
