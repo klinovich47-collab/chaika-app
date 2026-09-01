@@ -18,6 +18,7 @@ const safetyShare = await readFile('safety-share-enhancements.js', 'utf8');
 const mapStress = await readFile('map-stress-enhancements.js', 'utf8');
 const eventChat = await readFile('event-chat-enhancements.js', 'utf8');
 const forumAutoconfigRev12 = await readFile('forum-autoconfig-rev12.js', 'utf8');
+const knownGoodEntryBasemapRev53 = await readFile('known-good-entry-basemap-rev53.js', 'utf8');
 const mapUiRev10 = await readFile('map-ui-rev10.js', 'utf8');
 const darkShellRev11 = await readFile('dark-shell-rev11.js', 'utf8');
 const interactionStabilityRev13 = await readFile('interaction-stability-rev13.js', 'utf8');
@@ -37,7 +38,7 @@ const overlaySafeAreaRev40 = await readFile('overlay-safearea-rev40.js', 'utf8')
 const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
 
-// Creator-type switch is intentionally excluded: CHAIKA is people-only.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=44'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
-console.log('Prepared CHAIKA production build: UUID-backed people events and participant chat fix (rev=44).');
+// Known-good 2026-08-26 people-only app. Only the retired CARTO endpoint is substituted and the entry prompt is reset per app load.
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=53'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${knownGoodEntryBasemapRev53}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
+console.log('Prepared CHAIKA production build: restored known-good people-only app (rev=53).');
