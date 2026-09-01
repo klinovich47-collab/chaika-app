@@ -38,7 +38,7 @@ const overlaySafeAreaRev40 = await readFile('overlay-safearea-rev40.js', 'utf8')
 const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
 
-// Restored 2026-08-21 people-only app. Creator-type switch remains intentionally excluded.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=54'));
+// Restored 2026-08-21 people-only app. Only basemap appearance changed in rev55.
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=55'));
 await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${basemapCompatRev54}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${entryPromptResetRev54}\n\n${userMapPivotRev36}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
-console.log('Prepared CHAIKA production build: restored people-only working app (rev=54).');
+console.log('Prepared CHAIKA production build: colorful street basemap (rev=55).');
