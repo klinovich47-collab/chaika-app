@@ -1,4 +1,4 @@
-/* CHAIKA rev47 — clean keyless basemap for investor demo. */
+/* CHAIKA basemap hotfix — reliable light street map for Telegram WebView. */
 (() => {
   if (!window.L || typeof map === 'undefined') return;
 
@@ -18,16 +18,43 @@
     if (layer instanceof L.TileLayer) map.removeLayer(layer);
   });
 
-  const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  let fallbackInstalled = false;
+  let tileErrors = 0;
+
+  const installFallback = () => {
+    if (fallbackInstalled) return;
+    fallbackInstalled = true;
+    map.eachLayer(layer => {
+      if (layer instanceof L.TileLayer) map.removeLayer(layer);
+    });
+    const fallback = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 20,
+      maxNativeZoom: 19,
+      detectRetina: false,
+      updateWhenIdle: false,
+      keepBuffer: 4,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    fallback.bringToBack?.();
+    map.__chaikaLightTiles = fallback;
+  };
+
+  const tiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 20,
     maxNativeZoom: 19,
-    detectRetina: true,
-    updateWhenIdle: true,
+    detectRetina: false,
+    updateWhenIdle: false,
     keepBuffer: 4,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-  }).addTo(map);
+    attribution: 'Tiles © Esri · © OpenStreetMap contributors'
+  });
 
+  tiles.on('tileerror', () => {
+    tileErrors += 1;
+    if (tileErrors >= 4) installFallback();
+  });
+
+  tiles.addTo(map);
   tiles.bringToBack?.();
   map.__chaikaLightTiles = tiles;
-  setTimeout(() => map.invalidateSize(false), 0);
+  [0, 150, 500].forEach(delay => setTimeout(() => map.invalidateSize(false), delay));
 })();
