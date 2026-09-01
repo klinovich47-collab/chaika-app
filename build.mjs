@@ -38,8 +38,9 @@ const mobilePolishRev39 = await readFile('mobile-polish-rev39.js', 'utf8');
 const overlaySafeAreaRev40 = await readFile('overlay-safearea-rev40.js', 'utf8');
 const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
+const uiRussianPolishRev49 = await readFile('ui-russian-polish-rev49.js', 'utf8');
 
 // Creator-type switch is intentionally excluded: CHAIKA is people-only.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=48'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapBasemapGuardRev48}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${mapBasemapRev47}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
-console.log('Prepared CHAIKA production build: zero CARTO requests + investor demo events (rev=48).');
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=49'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapBasemapGuardRev48}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${mapBasemapRev47}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n\n${uiRussianPolishRev49}\n`);
+console.log('Prepared CHAIKA production build: clean map + Russian UI + investor demo events (rev=49).');
