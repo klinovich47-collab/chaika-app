@@ -15,6 +15,7 @@ const app = await readFile('app.js', 'utf8');
 const live = await readFile('supabase-live.js', 'utf8');
 const enhancements = await readFile('frontend-enhancements.js', 'utf8');
 const safetyShare = await readFile('safety-share-enhancements.js', 'utf8');
+const mapBasemapGuardRev48 = await readFile('map-basemap-guard-rev48.js', 'utf8');
 const mapStress = await readFile('map-stress-enhancements.js', 'utf8');
 const eventChat = await readFile('event-chat-enhancements.js', 'utf8');
 const forumAutoconfigRev12 = await readFile('forum-autoconfig-rev12.js', 'utf8');
@@ -39,6 +40,6 @@ const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
 
 // Creator-type switch is intentionally excluded: CHAIKA is people-only.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=47'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${mapBasemapRev47}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
-console.log('Prepared CHAIKA production build: clean keyless map + investor demo events (rev=47).');
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=48'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapBasemapGuardRev48}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${mapBasemapRev47}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
+console.log('Prepared CHAIKA production build: zero CARTO requests + investor demo events (rev=48).');
