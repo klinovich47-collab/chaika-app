@@ -2,7 +2,7 @@
 (() => {
   if (!window.L || typeof map === 'undefined') return;
 
-  const LIGHT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const LIGHT_TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
   function injectLightUiStyles() {
     if (document.getElementById('chaikaLightUiRev10Styles')) return;
@@ -75,9 +75,10 @@
       if (layer instanceof L.TileLayer) map.removeLayer(layer);
     });
     map.__chaikaLightTiles = L.tileLayer(LIGHT_TILE_URL, {
-      maxZoom: 19,
-      detectRetina: false,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+      subdomains: 'abcd',
+      maxZoom: 20,
+      detectRetina: true,
+      attribution: '© OpenStreetMap contributors © CARTO'
     }).addTo(map);
   }
 
@@ -101,7 +102,7 @@
       value: { lat, lng }, configurable: true, enumerable: false, writable: true
     });
     return events;
-  };
+  }
 
   chaikaGroupEvents = function(list) {
     const sorted = [...list].sort(clusterSort);

@@ -38,6 +38,6 @@ const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
 
 // Creator-type switch is intentionally excluded: CHAIKA is people-only.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=45'));
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=46'));
 await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
-console.log('Prepared CHAIKA production build: map basemap watermark fix (rev=45).');
+console.log('Prepared CHAIKA production build: restored CARTO Voyager basemap (rev=46).');
