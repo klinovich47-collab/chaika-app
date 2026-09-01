@@ -15,12 +15,10 @@ const app = await readFile('app.js', 'utf8');
 const live = await readFile('supabase-live.js', 'utf8');
 const enhancements = await readFile('frontend-enhancements.js', 'utf8');
 const safetyShare = await readFile('safety-share-enhancements.js', 'utf8');
-const mapBasemapGuardRev48 = await readFile('map-basemap-guard-rev48.js', 'utf8');
 const mapStress = await readFile('map-stress-enhancements.js', 'utf8');
 const eventChat = await readFile('event-chat-enhancements.js', 'utf8');
 const forumAutoconfigRev12 = await readFile('forum-autoconfig-rev12.js', 'utf8');
 const mapUiRev10 = await readFile('map-ui-rev10.js', 'utf8');
-const mapBasemapRev47 = await readFile('map-basemap-rev47.js', 'utf8');
 const darkShellRev11 = await readFile('dark-shell-rev11.js', 'utf8');
 const interactionStabilityRev13 = await readFile('interaction-stability-rev13.js', 'utf8');
 const profileActivityRev14 = await readFile('profile-activity-rev14.js', 'utf8');
@@ -38,9 +36,8 @@ const mobilePolishRev39 = await readFile('mobile-polish-rev39.js', 'utf8');
 const overlaySafeAreaRev40 = await readFile('overlay-safearea-rev40.js', 'utf8');
 const webappLockRev41 = await readFile('webapp-lock-rev41.js', 'utf8');
 const profileReturnRev42 = await readFile('profile-return-rev42.js', 'utf8');
-const uiRussianPolishRev49 = await readFile('ui-russian-polish-rev49.js', 'utf8');
 
 // Creator-type switch is intentionally excluded: CHAIKA is people-only.
-await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=52'));
-await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapBasemapGuardRev48}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${mapBasemapRev47}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n\n${uiRussianPolishRev49}\n`);
-console.log('Prepared CHAIKA production build: basemap hotfix only (rev=52).');
+await writeFile('dist/index.html', index.replace('./app.js?rev=1', './app.js?rev=44'));
+await writeFile('dist/app.js', `${app}\n\n${live}\n\n${enhancements}\n\n${safetyShare}\n\n${mapStress}\n\n${eventChat}\n\n${forumAutoconfigRev12}\n\n${mapUiRev10}\n\n${darkShellRev11}\n\n${interactionStabilityRev13}\n\n${profileActivityRev14}\n\n${safeAreaRev16}\n\n${headerLayoutRev17}\n\n${supportFeedbackRev18}\n\n${sheetGeolocationRev19}\n\n${sheetLayoutRev20}\n\n${museumExhibitionsRev21}\n\n${eventVisualsRev25}\n\n${userMapPivotRev36}\n\n${realPeopleEventsRev44}\n\n${quickCreateRev37}\n\n${mobilePolishRev39}\n\n${overlaySafeAreaRev40}\n\n${webappLockRev41}\n\n${profileReturnRev42}\n`);
+console.log('Prepared CHAIKA production build: UUID-backed people events and participant chat fix (rev=44).');
